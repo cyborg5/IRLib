@@ -38,7 +38,7 @@
 // methods virtual, which will be slightly slower, which is why it is optional.
 // #define DEBUG
 // #define TRACE
-#define TEST
+// #define TEST
 
 // Only used for testing; can remove virtual for shorter code
 #ifdef TEST

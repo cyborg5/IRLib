@@ -1,5 +1,5 @@
 IRLib – an Arduino library for infrared encoding and decoding
-Version 1.0  January 2013
+Version 1.1 april 2013
 Copyright 2013 by Chris Young http://cyborg5.com
  
 This library is a major rewrite of IRemote by Ken Shirriff which was covered 
@@ -59,6 +59,9 @@ IRsendDemo	Simplistic demo to send a Sony DVD power signal every time a
 IRsendJVC	Demonstrates sending a code using JVC protocol which is tricky.
 Samsung36	Demonstrates how to expand the library without recompiling it. 
 		Also demonstrates how to handle codes that are longer than 32 bits.
+IRservo		Demonstrates controlling a servo motor using an IR remote
+IRserial_remote	Demonstrates a Python application that runs on your PC and sends
+		serial data to Arduino which in turn sends IR remote signals.
 Note: I did not port any of the other demo sketches although I may add IRTest later.
 ****************************************************
 The library handles the following protocols:

@@ -1,5 +1,5 @@
 /* IRLib.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.0  January 2013
+ * Version 1.1   April 2013
  * Copyright 2013 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -151,7 +151,7 @@ public:
 class IRsendBase
 {
 public:
-  IRsendBase() {};
+  IRsendBase() ;
   void sendGeneric(unsigned long data, int Num_Bits, int Head_Mark, int Head_Space, int Mark_One, int Mark_Zero, int Space_One, int Space_Zero, int mHz, bool Stop_Bits);
 protected:
   void enableIROut(int khz);
@@ -227,6 +227,7 @@ class IRrecv
 {
 public:
   IRrecv(int recvpin);
+  void No_Output(void);
   void blink13(int blinkflag);
   bool GetResults(IRdecodeBase *decoder);
   void enableIRIn();

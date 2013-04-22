@@ -1,5 +1,5 @@
 /* IRLib.cpp from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.0  January 2013
+ * Version 1.1   April 2013
  * Copyright 2013 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -696,6 +696,15 @@ IRrecv::IRrecv(int recvpin)
   irparams.recvpin = recvpin;
   irparams.blinkflag = 0;
 }
+/* If your hardware is set up to do both output and input but your particular sketch
+ * doesn't do any output, this method will ensure that your output pin is low
+ * and doesn't turn on your IR LED or any output circuit.
+ */
+void IRrecv::No_Output (void) {
+ pinMode(TIMER_PWM_PIN, OUTPUT);  
+ digitalWrite(TIMER_PWM_PIN, LOW); // When not sending PWM, we want it low    
+}
+
 void IRrecv::enableIRIn() {
   // setup pulse clock timer interrupt
   cli();
@@ -803,6 +812,10 @@ ISR(TIMER_INTR_NAME)
       BLINKLED_OFF();  // turn pin 13 LED off
     }
   }
+}
+IRsendBase::IRsendBase () {
+ pinMode(TIMER_PWM_PIN, OUTPUT);  
+ digitalWrite(TIMER_PWM_PIN, LOW); // When not sending PWM, we want it low    
 }
 
 void IRsendBase::enableIROut(int khz) {

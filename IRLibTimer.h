@@ -1,6 +1,6 @@
 /* IRLibTimer.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.0  January 2013
- * Copyright 2013 by Chris Young http://cyborg5.com
+ * Version 1.3   January 2014
+ * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
  * GNU LESSER GENERAL PUBLIC LICENSE which as I read it allows me to make modified versions.
@@ -9,7 +9,8 @@
  * My purpose was to reorganize the code to make it easier to add or remove protocols.
  * As a result I have separated the act of receiving a set of raw timing codes from the act of decoding them
  * by making them separate classes. That way the receiving aspect can be more black box and implementers
- * of decoders and senders can just deal with the decoding of protocols.
+ * of decoders and senders can just deal with the decoding of protocols. It also allows for alternative
+ * types of receivers independent of the decoding. This makes porting to different hardware platforms easier.
  * Also added provisions to make the classes base classes that could be extended with new protocols
  * which would not require recompiling of the original library nor understanding of its detailed contents.
  * Some of the changes were made to reduce code size such as unnecessary use of long versus bool.
@@ -19,7 +20,7 @@
  * IRremote
  * Version 0.1 July, 2009
  * Copyright 2009 Ken Shirriff
- * For details, see http://arcfn.com/2009/08/multi-protocol-infrared-remote-library.htm http://arcfn.com
+ * For details, see http://www.righto.com/2009/08/multi-protocol-infrared-remote-library.html http://www.righto.com/
  *
  * Interrupt code based on NECIRrcv by Joe Knapp
  * http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1210243556

@@ -1,9 +1,15 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.1  April 2013 by Chris Young http://cyborg5.com
+ * Version 1.3   January 2014
+ * Copyright 2014 by Chris Young http://cyborg5.com
  * "IRservo" Control a servo using an IR remote
  */
 #include <IRLib.h>
 #include <Servo.h> 
+/* Note: Servo library uses TIMER1. The default timer for IRLib on Arduino Uno
+ * is TIMER2 so there is no conflict. However a default timer on Arduino Leonardo
+ * is TIMER1 so you will have to modify the timer used to use TIMER3 or TIMER4
+ * as specified in IRLibTimer.h. Also you will need to modify the input being used.
+ */
 // You will have to set these values depending on the protocol
 // and remote codes that you are using. These are from my Sony DVD/VCR
 #define MY_PROTOCOL SONY
@@ -66,3 +72,4 @@ void loop()
      My_Receiver.resume();
     }
 }
+

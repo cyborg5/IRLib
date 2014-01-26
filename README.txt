@@ -1,6 +1,6 @@
 IRLib – an Arduino library for infrared encoding and decoding
-Version 1.1 april 2013
-Copyright 2013 by Chris Young http://cyborg5.com
+Version 1.3 January 2014
+Copyright 2013, 2014 by Chris Young http://cyborg5.com
  
 This library is a major rewrite of IRemote by Ken Shirriff which was covered 
 by GNU LESSER GENERAL PUBLIC LICENSE which as I read it allows me to make 
@@ -43,28 +43,36 @@ iRLibTimer.h	Attempts to detect type of Arduino board and allows you to modify w
 		library. Alternate board and timer information based on a fork of the 
 		original KS library. That for can be found here.
 		https://github.com/TKJElectronics/Arduino-IRremote
+IRLibRData.h	Moved irparams structure and related data to this header to facilitate
+		user created extensions to IRrecvBase.
 
 Note: there is no "IRremoteInt.h" header as in the original library. Those values were 
 	moved elsewhere.
 
 The examples directory contains:
+IRanalyze		Dumps detailed information about a recent signal. Useful for analyzing
+		unknown protocols
+IRfreq		Reports modulation frequency of IR signal. Requires TSMP58000 IR learner
 IRhashdecode	Demonstrates hash decoder.
-IRrecord	Recording incoming signal and play it back when a character is sent 
+IRrecord		Recording incoming signal and play it back when a character is sent 
 		through the serial console. By using the console you no longer need 
 		to wire up a pushbutton to run this code.
 IRrecvDump	Receives a code, attempts to decode it, produces well formatted 
 		output of the results using the new "dump" method.
 IRsendDemo	Simplistic demo to send a Sony DVD power signal every time a 
 		character is received from the serial monitor.
-IRsendJVC	Demonstrates sending a code using JVC protocol which is tricky.
-Samsung36	Demonstrates how to expand the library without recompiling it. 
-		Also demonstrates how to handle codes that are longer than 32 bits.
+IRsendJVC		Demonstrates sending a code using JVC protocol which is tricky.
 IRservo		Demonstrates controlling a servo motor using an IR remote
 IRserial_remote	Demonstrates a Python application that runs on your PC and sends
 		serial data to Arduino which in turn sends IR remote signals.
+Samsung36	Demonstrates how to expand the library without recompiling it. 
+		Also demonstrates how to handle codes that are longer than 32 bits.
+DirecTV		Demonstrates additional protocol for DirecTV
+GIcable		Demonstrates additional protocol for GIcable used by Motorola cable boxes
 Note: I did not port any of the other demo sketches although I may add IRTest later.
 ****************************************************
 The library handles the following protocols:
 NEC, Sony, RC5, RC6, Raw all of which were supported in the KS version.
 Additionally added Panasonic_Old, JVC, NECx.
 Also added KS hash code routines which he released separately.
+Example code included but not in the library: Samsung36, DirecTV, GIcable.

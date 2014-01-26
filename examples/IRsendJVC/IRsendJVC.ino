@@ -1,10 +1,10 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.0  January 2013
- * Copyright 2013 by Chris Young http://cyborg5.com
+ * Version 1.3   January 2014
+ * Copyright 2014 by Chris Young http://cyborg5.com
  * Based on original example sketch for IRremote library 
  * Version 0.11 September, 2009
  * Copyright 2009 Ken Shirriff
- * http://arcfn.com
+ * http://www.righto.com/
  */
 /*
  * JVC sends repeat codes that are identical to the regular JVC codes
@@ -13,8 +13,8 @@
  *
  * The only device I had to test this protocol was an old JVC VCR. It would only work if at least
  * 2 frames are sent separated by 45us of "space". All JVC is the same bit length so we use
- * the third parameter as a to tell it whether or not to send the header.
- * Once with  the third parameter "1" then delay about 50 microseconds and send again
+ * the third parameter as a flag to tell it whether or not to send the header.
+ * Send once with the third parameter "1" then delay about 50 microseconds and send again
  * with the third parameter "0".
  */
 

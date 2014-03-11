@@ -1,5 +1,5 @@
 /* IRLib.cpp from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.3   January 2014
+ * Version 1.31   January 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -86,9 +86,11 @@ void IRsendBase::sendGeneric(unsigned long data, unsigned char Num_Bits, unsigne
   }
   if(Use_Stop) mark(Mark_One);   //stop bit of "1"
   if(Max_Extent) {
+#ifdef (TRACE)
     Serial.print("Max_Extent="); Serial.println(Max_Extent);
 	Serial.print("Extent="); Serial.println(Extent);
 	Serial.print("Difference="); Serial.println(Max_Extent-Extent);
+#endif
 	space(Max_Extent-Extent); 
 	}
 	else space(Space_One);

@@ -1,5 +1,5 @@
-/* IRLib.cpp from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.31   January 2014
+/* IRLib.cpp from IRLib - an Arduino library for infrared encoding and decoding
+ * Version 1.33   January 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -86,7 +86,7 @@ void IRsendBase::sendGeneric(unsigned long data, unsigned char Num_Bits, unsigne
   }
   if(Use_Stop) mark(Mark_One);   //stop bit of "1"
   if(Max_Extent) {
-#ifdef (TRACE)
+#ifdef TRACE
     Serial.print("Max_Extent="); Serial.println(Max_Extent);
 	Serial.print("Extent="); Serial.println(Extent);
 	Serial.print("Difference="); Serial.println(Max_Extent-Extent);
@@ -449,7 +449,7 @@ bool IRdecodeSony::decode(void) {
  */
 
 /*
- * A very good source for protocol information is… http://www.hifi-remote.com/johnsfine/DecodeIR.html
+ * A very good source for protocol information is... http://www.hifi-remote.com/johnsfine/DecodeIR.html
  * I used that information to understand what they call the "Panasonic old" protocol which is used by
  * Scientific Atlanta cable boxes. That website uses a very strange notation called IRP notation.
  * For this protocol, the notation was:
@@ -669,8 +669,8 @@ bool IRdecodeHash::decode(void) {
 
 /* We have created a new receiver base class so that we can use its code to implement
  * additional receiver classes in addition to the original IRremote code which used
- * 50µs interrupt sampling of the input pin. See IRrecvLoop and IRrecvPCI classes
- * below. IRrecv is the original receiver class with the 50µs sampling.
+ * 50us interrupt sampling of the input pin. See IRrecvLoop and IRrecvPCI classes
+ * below. IRrecv is the original receiver class with the 50us sampling.
  */
 IRrecvBase::IRrecvBase(unsigned char recvpin)
 {

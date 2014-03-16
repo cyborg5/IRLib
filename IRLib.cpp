@@ -40,7 +40,7 @@ const __FlashStringHelper *Pnames(IRTYPES Type) {
   if(Type>LAST_PROTOCOL) Type=UNKNOWN;
   // You can add additional strings before the entry for hash code.
   const __FlashStringHelper *Names[LAST_PROTOCOL+1]={F("Unknown"),F("NEC"),F("Sony"),F("RC5"),F("RC6"),F("Panasonic Old"),F("JVC"),F("NECx"),F("Hash Code")};
-  return Names[Type];
+  return Names[(int) Type];
 };
 
 
@@ -479,7 +479,7 @@ bool IRdecodePanasonic_Old::decode(void) {
   long S1= (value & 0x0007ff);       // 00 0000 0000 0111 1111 1111 //00000 000000 11111 111111
   long S2= (value & 0x3ff800)>> 11;  // 11 1111 1111 1000 0000 0000 //11111 111111 00000 000000
   S2= (~S2) & 0x0007ff;
-  if (S1!=S2) {IRLIB_REJECTION_MESSAGE(F("inverted bit redundancy")); return false;};
+  if (S1!=S2) return IRLIB_REJECTION_MESSAGE(F("inverted bit redundancy"));
   // Success
   decode_type = PANASONIC_OLD;
   return true;
@@ -501,7 +501,7 @@ bool IRdecodeJVC::decode(void) {
      if (rawlen==34) 
      {
         if(!decodeGeneric(0,525,0,0,525,525*3,525))
-           {IRLIB_REJECTION_MESSAGE(F("JVC repeat failed generic")); return false;}
+           { return IRLIB_REJECTION_MESSAGE(F("JVC repeat failed generic")); }
         else {
  //If this is a repeat code then IRdecodeBase::decode fails to add the most significant bit
            if (MATCH(rawbuf[4],(525*3))) 
@@ -648,8 +648,8 @@ bool IRdecodeRC6::decode(void) {
  * Converts the raw code values into a 32-bit hash code.
  * Hopefully this code is unique for each button.
  */
-#define FNV_PRIME_32 16777619
-#define FNV_BASIS_32 2166136261
+#define FNV_PRIME_32 16777619UL
+#define FNV_BASIS_32 2166136261UL
 // Compare two tick values, returning 0 if newval is shorter,
 // 1 if newval is equal, and 2 if newval is longer
 int IRdecodeHash::compare(unsigned int oldval, unsigned int newval) {
@@ -779,7 +779,7 @@ IRrecvPCI::IRrecvPCI(unsigned char inum) {
     case 5: irparams.recvpin=18; break;
   #endif
 #endif
-    //Illegal vaalue to flag you that something is wrong
+    //Illegal value to flag you that something is wrong
     default:  irparams.recvpin=255; 
   }
 }

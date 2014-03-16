@@ -86,7 +86,7 @@ void IRsendBase::sendGeneric(unsigned long data, unsigned char Num_Bits, unsigne
   }
   if(Use_Stop) mark(Mark_One);   //stop bit of "1"
   if(Max_Extent) {
-#ifdef (IRLIB_TRACE)
+#ifdef IRLIB_TRACE
     Serial.print("Max_Extent="); Serial.println(Max_Extent);
 	Serial.print("Extent="); Serial.println(Extent);
 	Serial.print("Difference="); Serial.println(Max_Extent-Extent);

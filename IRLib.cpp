@@ -737,7 +737,7 @@ bool IRrecvLoop::GetResults(IRdecodeBase *decoder) {
   while(irparams.rawlen<RAWBUF) {  //While the buffer not overflowing
     while(OldState==(NewState=digitalRead(irparams.recvpin))) { //While the pin hasn't changed
       if( (DeltaTime = (EndTime=micros()) - StartTime) > 10000) { //If it's a very long wait
-        if(Finished=irparams.rawlen) break; //finished unless it's the opening gap
+        if((Finished=irparams.rawlen)) break; //finished unless it's the opening gap
       }
     }
     if(Finished) break;

@@ -730,7 +730,9 @@ void IRrecvBase::resume() {
 bool IRrecvLoop::GetResults(IRdecodeBase *decoder) {
   bool Finished=false;
   byte OldState=HIGH;byte NewState;
-  unsigned long StartTime, DeltaTime, EndTime;
+  unsigned long StartTime;
+  unsigned long DeltaTime = 0;
+  unsigned long EndTime = 0;
   StartTime=micros();
   while(irparams.rawlen<RAWBUF) {  //While the buffer not overflowing
     while(OldState==(NewState=digitalRead(irparams.recvpin))) { //While the pin hasn't changed

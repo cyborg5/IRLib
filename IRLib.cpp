@@ -798,6 +798,8 @@ void IRrecvPCI_Handler(){
     case STATE_IDLE:
        if(digitalRead(irparams.recvpin)) return; else irparams.rcvstate=STATE_RUNNING;
        break;
+    // ignore other cases
+    default: break;
   };
   irparams.rawbuf[irparams.rawlen]=DeltaTime;
   irparams.timer=ChangeTime;
@@ -982,6 +984,8 @@ ISR(TIMER_INTR_NAME)
       irparams.timer = 0;
     }
     break;
+  // ignore other cases
+  default: break;
   }
   do_Blink();
 }

@@ -48,20 +48,20 @@
 #define MATCH_MARK(t,u) MATCH(t,u)
 #define MATCH_SPACE(t,u) MATCH(t,u)
 
-#ifdef TRACE
-void ATTEMPT_MESSAGE(const __FlashStringHelper * s);
-void TRACE_MESSAGE(const __FlashStringHelper * s);
-byte REJECTION_MESSAGE(const __FlashStringHelper * s);
-#define RAW_COUNT_ERROR REJECTION_MESSAGE(F("number of raw samples"));
-#define HEADER_MARK_ERROR REJECTION_MESSAGE(F("header mark"));
-#define HEADER_SPACE_ERROR REJECTION_MESSAGE(F("header space"));
-#define DATA_MARK_ERROR REJECTION_MESSAGE(F("data mark"));
-#define DATA_SPACE_ERROR REJECTION_MESSAGE(F("data space"));
-#define TRAILER_BIT_ERROR REJECTION_MESSAGE(F("RC5/RC6 trailer bit length"));
+#ifdef IRLIB_TRACE
+void IRLIB_ATTEMPT_MESSAGE(const __FlashStringHelper * s);
+void IRLIB_TRACE_MESSAGE(const __FlashStringHelper * s);
+byte IRLIB_REJECTION_MESSAGE(const __FlashStringHelper * s);
+#define RAW_COUNT_ERROR IRLIB_REJECTION_MESSAGE(F("number of raw samples"));
+#define HEADER_MARK_ERROR IRLIB_REJECTION_MESSAGE(F("header mark"));
+#define HEADER_SPACE_ERROR IRLIB_REJECTION_MESSAGE(F("header space"));
+#define DATA_MARK_ERROR IRLIB_REJECTION_MESSAGE(F("data mark"));
+#define DATA_SPACE_ERROR IRLIB_REJECTION_MESSAGE(F("data space"));
+#define TRAILER_BIT_ERROR IRLIB_REJECTION_MESSAGE(F("RC5/RC6 trailer bit length"));
 #else
-#define ATTEMPT_MESSAGE(s)
-#define TRACE_MESSAGE(s)
-#define REJECTION_MESSAGE(s) false
+#define IRLIB_ATTEMPT_MESSAGE(s)
+#define IRLIB_TRACE_MESSAGE(s)
+#define IRLIB_REJECTION_MESSAGE(s) false
 #define RAW_COUNT_ERROR false
 #define HEADER_MARK_ERROR false
 #define HEADER_SPACE_ERROR false

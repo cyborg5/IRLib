@@ -52,7 +52,7 @@ public:
  */
 bool IRdecodeDirecTV::decode(void) {
   long data;  int offset; 
-  ATTEMPT_MESSAGE(F("DirecTV"));
+  IRLIB_ATTEMPT_MESSAGE(F("DirecTV"));
   if (rawlen != 20) return RAW_COUNT_ERROR;
   if (MATCH(rawbuf[1],3000))
     Repeat=true;

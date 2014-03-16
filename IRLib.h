@@ -33,14 +33,14 @@
 
 // The following are compile-time library options.
 // If you change them, recompile the library.
-// If TRACE is defined, some debugging information about the decode will be printed
-// TEST must be defined for the IRtest unittests to work.  It will make some
+// If IRLIB_TRACE is defined, some debugging information about the decode will be printed
+// IRLIB_TEST must be defined for the IRtest unittests to work.  It will make some
 // methods virtual, which will be slightly slower, which is why it is optional.
-// #define TRACE
-// #define TEST
+// #define IRLIB_TRACE
+// #define IRLIB_TEST
 
 // Only used for testing; can remove virtual for shorter code
-#ifdef TEST
+#ifdef IRLIB_TEST
 #define VIRTUAL virtual
 #else
 #define VIRTUAL

@@ -89,7 +89,7 @@ bool IRdecodeSamsung36::GetBit(void) {
   return true;
 };
 bool IRdecodeSamsung36::decode(void) {
-  ATTEMPT_MESSAGE(F("Samsung36"));
+  IRLIB_ATTEMPT_MESSAGE(F("Samsung36"));
   if (rawlen != 78) return RAW_COUNT_ERROR;
   if (!MATCH(rawbuf[1],4500))  return HEADER_MARK_ERROR;
   if (!MATCH(rawbuf[2],4500)) return HEADER_SPACE_ERROR;

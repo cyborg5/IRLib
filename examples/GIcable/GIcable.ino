@@ -36,7 +36,7 @@ public:
  * is "{38.7k,490}<1,-4.5|1,-9>(18,-9,F:8,D:4,C:4,1,-84,(18,-4.5,1,-178)*) {C = -(D + F:4 + F:4:4)}"
  */
 bool IRdecodeGIcable::decode(void) {
-  ATTEMPT_MESSAGE(F("GIcable"));
+  IRLIB_ATTEMPT_MESSAGE(F("GIcable"));
   // Check for repeat
   if (rawlen == 4 && MATCH(rawbuf[1], 490*18) && MATCH(rawbuf[2],2205)) {
     bits = 0;
@@ -50,7 +50,7 @@ bool IRdecodeGIcable::decode(void) {
 };
 
 void IRsendGIcable::send(unsigned long data, bool Repeat) {
-  ATTEMPT_MESSAGE(F("sending GIcable"));
+  IRLIB_ATTEMPT_MESSAGE(F("sending GIcable"));
   if(Repeat) {
     enableIROut(39);
     mark (490*18); space (2205); mark (490); space(220);delay (87);//actually "space(87200);"

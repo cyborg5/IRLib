@@ -86,7 +86,7 @@ void IRsendBase::sendGeneric(unsigned long data, unsigned char Num_Bits, unsigne
   }
   if(Use_Stop) mark(Mark_One);   //stop bit of "1"
   if(Max_Extent) {
-#ifdef (TRACE)
+#ifdef (IRLIB_TRACE)
     Serial.print("Max_Extent="); Serial.println(Max_Extent);
 	Serial.print("Extent="); Serial.println(Extent);
 	Serial.print("Difference="); Serial.println(Max_Extent-Extent);
@@ -98,7 +98,7 @@ void IRsendBase::sendGeneric(unsigned long data, unsigned char Num_Bits, unsigne
 
 void IRsendNEC::send(unsigned long data)
 {
-  ATTEMPT_MESSAGE(F("sending NEC"));
+  IRLIB_ATTEMPT_MESSAGE(F("sending NEC"));
   if (data==REPEAT) {
     enableIROut(38);
     mark (564* 16); space(564*4); mark(564);space(56*173);
@@ -419,7 +419,7 @@ bool IRdecode::decode(void) {
 
 #define NEC_RPT_SPACE	2250
 bool IRdecodeNEC::decode(void) {
-  ATTEMPT_MESSAGE(F("NEC"));
+  IRLIB_ATTEMPT_MESSAGE(F("NEC"));
   // Check for repeat
   if (rawlen == 4 && MATCH(rawbuf[2], NEC_RPT_SPACE) &&
     MATCH(rawbuf[3],564)) {
@@ -436,7 +436,7 @@ bool IRdecodeNEC::decode(void) {
 // According to http://www.hifi-remote.com/johnsfine/DecodeIR.html#Sony8 
 // Sony protocol can only be 8, 12, 15, or 20 bits in length.
 bool IRdecodeSony::decode(void) {
-  ATTEMPT_MESSAGE(F("Sony"));
+  IRLIB_ATTEMPT_MESSAGE(F("Sony"));
   if(rawlen!=2*8+2 && rawlen!=2*12+2 && rawlen!=2*15+2 && rawlen!=2*20+2) return RAW_COUNT_ERROR;
   if(!decodeGeneric(0, 600*4, 600, 600*2, 600, 600,0)) return false;
   decode_type = SONY;
@@ -466,7 +466,7 @@ bool IRdecodeSony::decode(void) {
  * The "+" at the end means you only need to send it once and it can repeat as many times as you want.
  */
 bool IRdecodePanasonic_Old::decode(void) {
-  ATTEMPT_MESSAGE(F("Panasonic_Old"));
+  IRLIB_ATTEMPT_MESSAGE(F("Panasonic_Old"));
   if(!decodeGeneric(48,833*4,833*4,0,833,833*3,833)) return false;
   /*
    * The protocol spec says that the first 11 bits described the device and function.
@@ -479,14 +479,14 @@ bool IRdecodePanasonic_Old::decode(void) {
   long S1= (value & 0x0007ff);       // 00 0000 0000 0111 1111 1111 //00000 000000 11111 111111
   long S2= (value & 0x3ff800)>> 11;  // 11 1111 1111 1000 0000 0000 //11111 111111 00000 000000
   S2= (~S2) & 0x0007ff;
-  if (S1!=S2) {REJECTION_MESSAGE(F("inverted bit redundancy")); return false;};
+  if (S1!=S2) {IRLIB_REJECTION_MESSAGE(F("inverted bit redundancy")); return false;};
   // Success
   decode_type = PANASONIC_OLD;
   return true;
 }
 
 bool IRdecodeNECx::decode(void) {
-  ATTEMPT_MESSAGE(F("NECx"));  
+  IRLIB_ATTEMPT_MESSAGE(F("NECx"));  
   if(!decodeGeneric(68,564*8,564*8,0,564,564*3,564)) return false;
   decode_type = NECX;
   return true;
@@ -494,14 +494,14 @@ bool IRdecodeNECx::decode(void) {
 
 // JVC does not send any header if there is a repeat.
 bool IRdecodeJVC::decode(void) {
-  ATTEMPT_MESSAGE(F("JVC"));
+  IRLIB_ATTEMPT_MESSAGE(F("JVC"));
   if(!decodeGeneric(36,525*16,525*8,0,525,525*3,525)) 
   {
-     ATTEMPT_MESSAGE(F("JVC Repeat"));
+     IRLIB_ATTEMPT_MESSAGE(F("JVC Repeat"));
      if (rawlen==34) 
      {
         if(!decodeGeneric(0,525,0,0,525,525*3,525))
-           {REJECTION_MESSAGE(F("JVC repeat failed generic")); return false;}
+           {IRLIB_REJECTION_MESSAGE(F("JVC repeat failed generic")); return false;}
         else {
  //If this is a repeat code then IRdecodeBase::decode fails to add the most significant bit
            if (MATCH(rawbuf[4],(525*3))) 
@@ -565,7 +565,7 @@ IRdecodeRC::RCLevel IRdecodeRC::getRClevel(unsigned char *offset, unsigned char 
 #define MIN_RC6_SAMPLES 1
 
 bool IRdecodeRC5::decode(void) {
-  ATTEMPT_MESSAGE(F("RC5"));
+  IRLIB_ATTEMPT_MESSAGE(F("RC5"));
   if (rawlen < MIN_RC5_SAMPLES + 2) return RAW_COUNT_ERROR;
   offset = 1; // Skip gap space
   data = 0;
@@ -598,7 +598,7 @@ bool IRdecodeRC5::decode(void) {
 }
 
 bool IRdecodeRC6::decode(void) {
-  ATTEMPT_MESSAGE(F("RC6"));
+  IRLIB_ATTEMPT_MESSAGE(F("RC6"));
   if (rawlen < MIN_RC6_SAMPLES) return RAW_COUNT_ERROR;
   // Initial mark
   if (!MATCH(rawbuf[1], RC6_HDR_MARK)) return HEADER_MARK_ERROR;
@@ -1038,8 +1038,8 @@ void IRsendBase::space(unsigned int time) {
  */
 
 
-#ifdef TRACE
-void ATTEMPT_MESSAGE(const __FlashStringHelper * s) {Serial.print(F("Attempting ")); Serial.print(s); Serial.println(F(" decode:"));};
-void TRACE_MESSAGE(const __FlashStringHelper * s) {Serial.print(F("Executing ")); Serial.println(s);};
-byte REJECTION_MESSAGE(const __FlashStringHelper * s) { Serial.print(F(" Protocol failed because ")); Serial.print(s); Serial.println(F(" wrong.")); return false;};
+#ifdef IRLIB_TRACE
+void IRLIB_ATTEMPT_MESSAGE(const __FlashStringHelper * s) {Serial.print(F("Attempting ")); Serial.print(s); Serial.println(F(" decode:"));};
+void IRLIB_TRACE_MESSAGE(const __FlashStringHelper * s) {Serial.print(F("Executing ")); Serial.println(s);};
+byte IRLIB_REJECTION_MESSAGE(const __FlashStringHelper * s) { Serial.print(F(" Protocol failed because ")); Serial.print(s); Serial.println(F(" wrong.")); return false;};
 #endif

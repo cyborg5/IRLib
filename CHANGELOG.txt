@@ -24,7 +24,7 @@ INTERNAL CHANGES
 	Adjustments to mark and space to deal with overreporting and underreporting of intervals is now done once in IRrecvBase::GetResults eliminating the need for MATCH_MARK(d,v) and MATCH_SPACE(d,v). Just use MATCH(d,v) everywhere.
 	Modified IRLibsendBase::mark() and IRLibsendBase::space() to overcome limitations of "delayMicroseconds()".
 	Changed many int to char or unsigned char to save memory
-	Eliminated DEBUG macro in IRLib.h and its use elsewhere. Macro TRACE is more useful.
+	Eliminated DEBUG macro in IRLib.h and its use elsewhere. Macro IRLIB_TRACE is more useful.
 	Changed IRTYPES to unsigned char and a list of #defines rather than an enum (even though I still really like enums, changing it saves memory)
 MEMORY EFFICIENCY
 	Code changes result in memory savings of approximately 54 bytes in code space and 39 bytes of RAM.

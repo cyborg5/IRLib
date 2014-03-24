@@ -1,5 +1,5 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.3   January 2014
+ * Version 1.4   March 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  * Based on original example sketch for IRremote library 
  * Version 0.11 September, 2009I know prescription and no
@@ -52,17 +52,17 @@ public:
  */
 bool IRdecodeDirecTV::decode(void) {
   long data;  int offset; 
-  ATTEMPT_MESSAGE(F("DirecTV"));
+  IRLIB_ATTEMPT_MESSAGE(F("DirecTV"));
   if (rawlen != 20) return RAW_COUNT_ERROR;
   if (MATCH(rawbuf[1],3000))
     Repeat=true;
   else 
     if (!MATCH(rawbuf[1],6000)){
-      return HEADER_MARK_ERROR;
+      return HEADER_MARK_ERROR(6000);
     } else {
       Repeat=false;
     }
-  if (!MATCH(rawbuf[2],1200)) return HEADER_SPACE_ERROR;
+  if (!MATCH(rawbuf[2],1200)) return HEADER_SPACE_ERROR(1200);
   offset=3; data=0;
   while (offset < 18) {
       if (MATCH(rawbuf[offset],1200)) {
@@ -71,7 +71,7 @@ bool IRdecodeDirecTV::decode(void) {
       else if (MATCH(rawbuf[offset],600)) {
         data <<= 1;
       } 
-      else return DATA_MARK_ERROR;
+      else return DATA_MARK_ERROR(1200);
       offset++;
       if (MATCH(rawbuf[offset],1200)) {
         data = (data << 1) | 1;
@@ -79,10 +79,10 @@ bool IRdecodeDirecTV::decode(void) {
       else if (MATCH (rawbuf[offset],600)) {
         data <<= 1;
       } 
-      else return DATA_SPACE_ERROR;
+      else return DATA_SPACE_ERROR(1200);
       offset++;
   }
-  if (!MATCH(rawbuf[1],6000))  return DATA_MARK_ERROR;
+  if (!MATCH(rawbuf[1],6000))  return DATA_MARK_ERROR(6000);
   bits = 16;//set bit length
   value = data;//put remaining bits in value
   decode_type= static_cast<IRTYPES>DIRECTV;
@@ -152,7 +152,7 @@ int RECV_PIN = 11;
 IRrecv My_Receiver(RECV_PIN);
 IRTYPES codeType;         // The type of code
 unsigned long codeValue;  // The data bits
-int codeBits;             // The length of the code in bits or for Samsung is storage for data2
+int codeBits;             // The length of the code in bits
 bool GotOne; 
 
 void setup()
@@ -167,7 +167,11 @@ void setup()
   My_Receiver.enableIRIn(); // Start the receiver
 }
 void loop() {
-  if (Serial.read() != -1) {
+  if (Serial.available()>0) {
+    unsigned char c=Serial.read();
+    if (c=='p') {//Send a test pattern
+      GotOne= true;  codeType=DIRECTV; codeValue=0x1234; codeBits=16;
+    }
     if(GotOne) {
       My_Sender.send(codeType,codeValue,codeBits);
       Serial.print(F("Sent "));

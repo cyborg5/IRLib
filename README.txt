@@ -69,6 +69,7 @@ Samsung36	Demonstrates how to expand the library without recompiling it.
 		Also demonstrates how to handle codes that are longer than 32 bits.
 DirecTV		Demonstrates additional protocol for DirecTV
 GIcable		Demonstrates additional protocol for GIcable used by Motorola cable boxes
+rcmm		Additional protocol Phillips RCMM used by AT&T U-Verse boxes
 Note: I did not port any of the other demo sketches although I may add IRTest later.
 The manuals directory contains:
 IRLibReference.docx	Reference manual in Microsoft Word format

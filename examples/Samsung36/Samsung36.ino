@@ -1,5 +1,5 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.3   January 2014
+ * Version 1.4   March 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  * Based on original example sketch for IRremote library 
  * Version 0.11 September, 2009I know prescription and no
@@ -78,28 +78,28 @@ public virtual IRsendSamsung36  //No comma here
  * We then call it in a loop as needed.
  */
 bool IRdecodeSamsung36::GetBit(void) {
-  if (!MATCH(rawbuf[offset],500)) return DATA_MARK_ERROR;
+  if (!MATCH(rawbuf[offset],500)) return DATA_MARK_ERROR(500);
   offset++;
   if (MATCH(rawbuf[offset],1500)) 
     data = (data << 1) | 1;
   else if (MATCH(rawbuf[offset],500)) 
     data <<= 1;
-  else return DATA_SPACE_ERROR;
+  else return DATA_SPACE_ERROR(1500);
   offset++;
   return true;
 };
 bool IRdecodeSamsung36::decode(void) {
-  ATTEMPT_MESSAGE(F("Samsung36"));
+  IRLIB_ATTEMPT_MESSAGE(F("Samsung36"));
   if (rawlen != 78) return RAW_COUNT_ERROR;
-  if (!MATCH(rawbuf[1],4500))  return HEADER_MARK_ERROR;
-  if (!MATCH(rawbuf[2],4500)) return HEADER_SPACE_ERROR;
+  if (!MATCH(rawbuf[1],4500))  return HEADER_MARK_ERROR(4500);
+  if (!MATCH(rawbuf[2],4500)) return HEADER_SPACE_ERROR(4500);
   offset=3; data=0;
   //Get first 16 bits
   while (offset < 16*2+2) if(!GetBit()) return false;
   //Skip middle header
-  if (!MATCH(rawbuf[offset],500))  return DATA_MARK_ERROR;
+  if (!MATCH(rawbuf[offset],500))  return DATA_MARK_ERROR(500);
   offset++;
-  if (!MATCH(rawbuf[offset],4500)) return DATA_SPACE_ERROR;
+  if (!MATCH(rawbuf[offset],4500)) return DATA_SPACE_ERROR(4400);
   //save first 16 bits in "value2" and reset data
   offset++; value2=data; data=0;
   //12 bits into this second segment there is a 68us space
@@ -217,7 +217,11 @@ void setup()
   My_Receiver.enableIRIn(); // Start the receiver
 }
 void loop() {
-  if (Serial.read() != -1) {
+  if (Serial.available()>0) {
+    unsigned char c=Serial.read();
+    if (c=='p') {//Send a test pattern
+      GotOne= true;  codeType=SAMSUNG36; codeValue=0x12345; codeBits=0x6789;
+    }
     if(GotOne) {
       My_Sender.send(codeType,codeValue,codeBits);
       Serial.print(F("Sent "));

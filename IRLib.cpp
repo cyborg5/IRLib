@@ -1,5 +1,5 @@
 /* IRLib.cpp from IRLib - an Arduino library for infrared encoding and decoding
- * Version 1.33   January 2014
+ * Version 1.4   March 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -86,7 +86,7 @@ void IRsendBase::sendGeneric(unsigned long data, unsigned char Num_Bits, unsigne
   }
   if(Use_Stop) mark(Mark_One);   //stop bit of "1"
   if(Max_Extent) {
-#ifdef TRACE
+#ifdef IRLIB_TRACE
     Serial.print("Max_Extent="); Serial.println(Max_Extent);
 	Serial.print("Extent="); Serial.println(Extent);
 	Serial.print("Difference="); Serial.println(Max_Extent-Extent);
@@ -98,7 +98,6 @@ void IRsendBase::sendGeneric(unsigned long data, unsigned char Num_Bits, unsigne
 
 void IRsendNEC::send(unsigned long data)
 {
-  ATTEMPT_MESSAGE(F("sending NEC"));
   if (data==REPEAT) {
     enableIROut(38);
     mark (564* 16); space(564*4); mark(564);space(56*173);
@@ -347,16 +346,17 @@ bool IRdecodeBase::decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark
                                  unsigned int Mark_One, unsigned int Mark_Zero, unsigned int Space_One, unsigned int Space_Zero) {
 // If raw samples count or head mark are zero then don't perform these tests.
 // Some protocols need to do custom header work.
-  unsigned long data = 0;  unsigned char Max; unsigned char offset;
+  unsigned long data = 0;  unsigned char Max; offset=1;
   if (Raw_Count) {if (rawlen != Raw_Count) return RAW_COUNT_ERROR;}
-  if (Head_Mark) {if (!MATCH(rawbuf[1],Head_Mark))    return HEADER_MARK_ERROR;}
-  if (Head_Space) {if (!MATCH(rawbuf[2],Head_Space)) return HEADER_SPACE_ERROR;}
+  if (Head_Mark) {if (!MATCH(rawbuf[offset],Head_Mark))    return HEADER_MARK_ERROR(Head_Mark);}
+  offset++;
+  if (Head_Space) {if (!MATCH(rawbuf[offset],Head_Space)) return HEADER_SPACE_ERROR(Head_Space);}
 
   if (Mark_One) {//Length of a mark indicates data "0" or "1". Space_Zero is ignored.
     offset=2;//skip initial gap plus header Mark.
     Max=rawlen;
     while (offset < Max) {
-      if (!MATCH(rawbuf[offset], Space_One)) return DATA_SPACE_ERROR;
+      if (!MATCH(rawbuf[offset], Space_One)) return DATA_SPACE_ERROR(Space_One);
       offset++;
       if (MATCH(rawbuf[offset], Mark_One)) {
         data = (data << 1) | 1;
@@ -364,7 +364,7 @@ bool IRdecodeBase::decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark
       else if (MATCH(rawbuf[offset], Mark_Zero)) {
         data <<= 1;
       } 
-      else return DATA_MARK_ERROR;
+      else return DATA_MARK_ERROR(Mark_Zero);
       offset++;
     }
     bits = (offset - 1) / 2;
@@ -373,7 +373,7 @@ bool IRdecodeBase::decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark
     Max=rawlen-1; //ignore stop bit
     offset=3;//skip initial gap plus two header items
     while (offset < Max) {
-      if (!MATCH (rawbuf[offset],Mark_Zero)) return DATA_MARK_ERROR;
+      if (!MATCH (rawbuf[offset],Mark_Zero)) return DATA_MARK_ERROR(Mark_Zero);
       offset++;
       if (MATCH(rawbuf[offset],Space_One)) {
         data = (data << 1) | 1;
@@ -381,7 +381,7 @@ bool IRdecodeBase::decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark
       else if (MATCH (rawbuf[offset],Space_Zero)) {
         data <<= 1;
       } 
-      else return DATA_SPACE_ERROR;
+      else return DATA_SPACE_ERROR(Space_Zero);
       offset++;
     }
     bits = (offset - 1) / 2 -1;//didn't encode stop bit
@@ -419,7 +419,7 @@ bool IRdecode::decode(void) {
 
 #define NEC_RPT_SPACE	2250
 bool IRdecodeNEC::decode(void) {
-  ATTEMPT_MESSAGE(F("NEC"));
+  IRLIB_ATTEMPT_MESSAGE(F("NEC"));
   // Check for repeat
   if (rawlen == 4 && MATCH(rawbuf[2], NEC_RPT_SPACE) &&
     MATCH(rawbuf[3],564)) {
@@ -436,7 +436,7 @@ bool IRdecodeNEC::decode(void) {
 // According to http://www.hifi-remote.com/johnsfine/DecodeIR.html#Sony8 
 // Sony protocol can only be 8, 12, 15, or 20 bits in length.
 bool IRdecodeSony::decode(void) {
-  ATTEMPT_MESSAGE(F("Sony"));
+  IRLIB_ATTEMPT_MESSAGE(F("Sony"));
   if(rawlen!=2*8+2 && rawlen!=2*12+2 && rawlen!=2*15+2 && rawlen!=2*20+2) return RAW_COUNT_ERROR;
   if(!decodeGeneric(0, 600*4, 600, 600*2, 600, 600,0)) return false;
   decode_type = SONY;
@@ -466,7 +466,7 @@ bool IRdecodeSony::decode(void) {
  * The "+" at the end means you only need to send it once and it can repeat as many times as you want.
  */
 bool IRdecodePanasonic_Old::decode(void) {
-  ATTEMPT_MESSAGE(F("Panasonic_Old"));
+  IRLIB_ATTEMPT_MESSAGE(F("Panasonic_Old"));
   if(!decodeGeneric(48,833*4,833*4,0,833,833*3,833)) return false;
   /*
    * The protocol spec says that the first 11 bits described the device and function.
@@ -479,14 +479,14 @@ bool IRdecodePanasonic_Old::decode(void) {
   long S1= (value & 0x0007ff);       // 00 0000 0000 0111 1111 1111 //00000 000000 11111 111111
   long S2= (value & 0x3ff800)>> 11;  // 11 1111 1111 1000 0000 0000 //11111 111111 00000 000000
   S2= (~S2) & 0x0007ff;
-  if (S1!=S2) {REJECTION_MESSAGE(F("inverted bit redundancy")); return false;};
+  if (S1!=S2) return IRLIB_REJECTION_MESSAGE(F("inverted bit redundancy"));
   // Success
   decode_type = PANASONIC_OLD;
   return true;
 }
 
 bool IRdecodeNECx::decode(void) {
-  ATTEMPT_MESSAGE(F("NECx"));  
+  IRLIB_ATTEMPT_MESSAGE(F("NECx"));  
   if(!decodeGeneric(68,564*8,564*8,0,564,564*3,564)) return false;
   decode_type = NECX;
   return true;
@@ -494,14 +494,14 @@ bool IRdecodeNECx::decode(void) {
 
 // JVC does not send any header if there is a repeat.
 bool IRdecodeJVC::decode(void) {
-  ATTEMPT_MESSAGE(F("JVC"));
+  IRLIB_ATTEMPT_MESSAGE(F("JVC"));
   if(!decodeGeneric(36,525*16,525*8,0,525,525*3,525)) 
   {
-     ATTEMPT_MESSAGE(F("JVC Repeat"));
+     IRLIB_ATTEMPT_MESSAGE(F("JVC Repeat"));
      if (rawlen==34) 
      {
         if(!decodeGeneric(0,525,0,0,525,525*3,525))
-           {REJECTION_MESSAGE(F("JVC repeat failed generic")); return false;}
+           {return IRLIB_REJECTION_MESSAGE(F("JVC repeat failed generic"));}
         else {
  //If this is a repeat code then IRdecodeBase::decode fails to add the most significant bit
            if (MATCH(rawbuf[4],(525*3))) 
@@ -510,7 +510,7 @@ bool IRdecodeJVC::decode(void) {
            } 
            else
            {
-             if (!MATCH(rawbuf[4],525)) return DATA_SPACE_ERROR;
+             if (!MATCH(rawbuf[4],525)) return DATA_SPACE_ERROR(525);
            }
         }
         bits++;
@@ -531,14 +531,14 @@ bool IRdecodeJVC::decode(void) {
  * t1 is the time interval for a single bit in microseconds.
  * Returns ERROR if the measured time interval is not a multiple of t1.
  */
-IRdecodeRC::RCLevel IRdecodeRC::getRClevel(unsigned char *offset, unsigned char *used, const unsigned int t1) {
-  if (*offset >= rawlen) {
+IRdecodeRC::RCLevel IRdecodeRC::getRClevel(unsigned char *used, const unsigned int t1) {
+  if (offset >= rawlen) {
     // After end of recorded buffer, assume SPACE.
     return SPACE;
   }
-  unsigned int width = rawbuf[*offset];
+  unsigned int width = rawbuf[offset];
   IRdecodeRC::RCLevel val;
-  if ((*offset) % 2) val=MARK; else val=SPACE;
+  if ((offset) % 2) val=MARK; else val=SPACE;
   
   unsigned char avail;
   if (MATCH(width, t1)) {
@@ -556,7 +556,7 @@ IRdecodeRC::RCLevel IRdecodeRC::getRClevel(unsigned char *offset, unsigned char 
   (*used)++;
   if (*used >= avail) {
     *used = 0;
-    (*offset)++;
+    (offset)++;
   }
   return val;   
 }
@@ -565,21 +565,21 @@ IRdecodeRC::RCLevel IRdecodeRC::getRClevel(unsigned char *offset, unsigned char 
 #define MIN_RC6_SAMPLES 1
 
 bool IRdecodeRC5::decode(void) {
-  ATTEMPT_MESSAGE(F("RC5"));
+  IRLIB_ATTEMPT_MESSAGE(F("RC5"));
   if (rawlen < MIN_RC5_SAMPLES + 2) return RAW_COUNT_ERROR;
   offset = 1; // Skip gap space
   data = 0;
   used = 0;
   // Get start bits
-  if (getRClevel(&offset, &used, RC5_T1) != MARK) return HEADER_MARK_ERROR;
+  if (getRClevel(&used, RC5_T1) != MARK) return HEADER_MARK_ERROR(RC5_T1);
 //Note: Original IRremote library incorrectly assumed second bit was always a "1"
 //bit patterns from this decoder are not backward compatible with patterns produced
 //by original library. Uncomment the following two lines to maintain backward compatibility.
-  //if (getRClevel(&offset, &used, RC5_T1) != SPACE) return HEADER_SPACE_ERROR;
-  //if (getRClevel(&offset, &used, RC5_T1) != MARK) return HEADER_MARK_ERROR;
+  //if (getRClevel(&used, RC5_T1) != SPACE) return HEADER_SPACE_ERROR(RC5_T1);
+  //if (getRClevel(&used, RC5_T1) != MARK) return HEADER_MARK_ERROR(RC5_T1);
   for (nbits = 0; offset < rawlen; nbits++) {
-    RCLevel levelA = getRClevel(&offset, &used, RC5_T1); 
-    RCLevel levelB = getRClevel(&offset, &used, RC5_T1);
+    RCLevel levelA = getRClevel(&used, RC5_T1); 
+    RCLevel levelB = getRClevel(&used, RC5_T1);
     if (levelA == SPACE && levelB == MARK) {
       // 1 bit
       data = (data << 1) | 1;
@@ -588,7 +588,7 @@ bool IRdecodeRC5::decode(void) {
       // zero bit
       data <<= 1;
     } 
-    else return DATA_MARK_ERROR;
+    else return DATA_MARK_ERROR(RC5_T1);
   }
   // Success
   bits = 13;
@@ -598,28 +598,28 @@ bool IRdecodeRC5::decode(void) {
 }
 
 bool IRdecodeRC6::decode(void) {
-  ATTEMPT_MESSAGE(F("RC6"));
+  IRLIB_ATTEMPT_MESSAGE(F("RC6"));
   if (rawlen < MIN_RC6_SAMPLES) return RAW_COUNT_ERROR;
   // Initial mark
-  if (!MATCH(rawbuf[1], RC6_HDR_MARK)) return HEADER_MARK_ERROR;
-  if (!MATCH(rawbuf[2], RC6_HDR_SPACE)) return HEADER_SPACE_ERROR;
+  if (!MATCH(rawbuf[1], RC6_HDR_MARK)) return HEADER_MARK_ERROR(RC6_HDR_MARK);
+  if (!MATCH(rawbuf[2], RC6_HDR_SPACE)) return HEADER_SPACE_ERROR(RC6_HDR_SPACE);
   offset=3;//Skip gap and header
   data = 0;
   used = 0;
   // Get start bit (1)
-  if (getRClevel(&offset, &used, RC6_T1) != MARK) return DATA_MARK_ERROR;
-  if (getRClevel(&offset, &used, RC6_T1) != SPACE) return DATA_SPACE_ERROR;
+  if (getRClevel(&used, RC6_T1) != MARK) return DATA_MARK_ERROR(RC6_T1);
+  if (getRClevel(&used, RC6_T1) != SPACE) return DATA_SPACE_ERROR(RC6_T1);
   for (nbits = 0; offset < rawlen; nbits++) {
     RCLevel levelA, levelB; // Next two levels
-    levelA = getRClevel(&offset, &used, RC6_T1); 
+    levelA = getRClevel(&used, RC6_T1); 
     if (nbits == 3) {
       // T bit is double wide; make sure second half matches
-      if (levelA != getRClevel(&offset, &used, RC6_T1)) return TRAILER_BIT_ERROR;
+      if (levelA != getRClevel(&used, RC6_T1)) return TRAILER_BIT_ERROR(RC6_T1);
     } 
-    levelB = getRClevel(&offset, &used, RC6_T1);
+    levelB = getRClevel(&used, RC6_T1);
     if (nbits == 3) {
       // T bit is double wide; make sure second half matches
-      if (levelB != getRClevel(&offset, &used, RC6_T1)) return TRAILER_BIT_ERROR;
+      if (levelB != getRClevel(&used, RC6_T1)) return TRAILER_BIT_ERROR(RC6_T1);
     } 
     if (levelA == MARK && levelB == SPACE) { // reversed compared to RC5
       // 1 bit
@@ -630,7 +630,7 @@ bool IRdecodeRC6::decode(void) {
       data <<= 1;
     } 
     else {
-      return DATA_MARK_ERROR; 
+      return DATA_MARK_ERROR(RC6_T1); 
     } 
   }
   // Success
@@ -1038,8 +1038,12 @@ void IRsendBase::space(unsigned int time) {
  */
 
 
-#ifdef TRACE
-void ATTEMPT_MESSAGE(const __FlashStringHelper * s) {Serial.print(F("Attempting ")); Serial.print(s); Serial.println(F(" decode:"));};
-void TRACE_MESSAGE(const __FlashStringHelper * s) {Serial.print(F("Executing ")); Serial.println(s);};
-byte REJECTION_MESSAGE(const __FlashStringHelper * s) { Serial.print(F(" Protocol failed because ")); Serial.print(s); Serial.println(F(" wrong.")); return false;};
+#ifdef IRLIB_TRACE
+void IRLIB_ATTEMPT_MESSAGE(const __FlashStringHelper * s) {Serial.print(F("Attempting ")); Serial.print(s); Serial.println(F(" decode:"));};
+void IRLIB_TRACE_MESSAGE(const __FlashStringHelper * s) {Serial.print(F("Executing ")); Serial.println(s);};
+byte IRLIB_REJECTION_MESSAGE(const __FlashStringHelper * s) { Serial.print(F(" Protocol failed because ")); Serial.print(s); Serial.println(F(" wrong.")); return false;};
+byte IRLIB_DATA_ERROR_MESSAGE(const __FlashStringHelper * s, unsigned char index, unsigned int value, unsigned int expected) {  
+ IRLIB_REJECTION_MESSAGE(s); Serial.print(F("Error occurred with rawbuf[")); Serial.print(index,DEC); Serial.print(F("]=")); Serial.print(value,DEC);
+ Serial.print(F(" expected:")); Serial.println(expected,DEC); return false;
+};
 #endif

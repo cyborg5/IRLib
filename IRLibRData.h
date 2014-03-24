@@ -1,5 +1,5 @@
 /* IRLibRData.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.3   January 2014
+ * Version 1.4   March 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by

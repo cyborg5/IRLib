@@ -1,5 +1,5 @@
 /* IRLib.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.3   January 2014
+ * Version 1.4   March 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -33,14 +33,14 @@
 
 // The following are compile-time library options.
 // If you change them, recompile the library.
-// If TRACE is defined, some debugging information about the decode will be printed
-// TEST must be defined for the IRtest unittests to work.  It will make some
+// If IRLIB_TRACE is defined, some debugging information about the decode will be printed
+// IRLIB_TEST must be defined for the IRtest unittests to work.  It will make some
 // methods virtual, which will be slightly slower, which is why it is optional.
-// #define TRACE
-// #define TEST
+// #define IRLIB_TRACE
+// #define IRLIB_TEST
 
 // Only used for testing; can remove virtual for shorter code
-#ifdef TEST
+#ifdef IRLIB_TEST
 #define VIRTUAL virtual
 #else
 #define VIRTUAL
@@ -81,7 +81,7 @@ public:
   void UseExtnBuf(void *P); //Normally uses same rawbuf as IRrecv. Use this to define your own buffer.
   void copyBuf (IRdecodeBase *source);//copies rawbuf and rawlen from one decoder to another
 protected:
-  unsigned char index;           // Index into rawbuf used various places
+  unsigned char offset;           // Index into rawbuf used various places
 };
 
 class IRdecodeHash: public virtual IRdecodeBase
@@ -111,10 +111,9 @@ class IRdecodeRC: public virtual IRdecodeBase
 public:
   enum RCLevel {MARK, SPACE, ERROR};//used by decoders for RC5/RC6
   // These are called by decode
-  RCLevel getRClevel(unsigned char *offset, unsigned char *used, const unsigned int t1);
+  RCLevel getRClevel(unsigned char *used, const unsigned int t1);
 protected:
   unsigned char nbits;
-  unsigned char offset;
   unsigned char used;
   long data;
 };

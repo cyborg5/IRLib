@@ -1,6 +1,12 @@
 Change Log for IRLib – an Arduino library for infrared encoding and decoding
 Copyright 2013-2014 by Chris Young http://tech.cyborg5.com/irlib/
 
+Version 1.4 – March 2014
+	Added IRLIB_ prefix to debug macros to avoid name collisions
+	Debug macros now report more information
+	Added example new protocol Phillips RCMM used by AT&T U-Verse boxes and Nokia satellite boxes
+	Added ABS_MATCH macro which allows you to match using absolute number of microseconds versus the old way which used a percentage. Necessary for implementing RCMM protocol.
+	Added IRLIB_USE_PERCENT definition which when commented out changes the default from percentage match to absolute match. Also added DEFAULT_ABS_TOLERANCE. More details on these changes will be provided in the documentation when the section on adding new protocols is completed.
 Version 1.31 – March 2014
 	Commented out debug code that was accidentally left active in 1.3 release
 Version 1.3	 – January 2014 

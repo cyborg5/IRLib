@@ -1,5 +1,5 @@
 /* IRLibMatch.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.3   January 2014
+ * Version 1.4   March 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -31,43 +31,70 @@
 #define IRLibMatch_h
 
 /*
- * This is some miscellaneous definition that is needed by the decoding routines. 
+ * Originally all timing comparisons for decoding were based on a percent of the
+ * target value. However when target values are relatively large, the percent tolerance
+ * is too much.  In some instances an absolute tolerance is needed. In order to maintain
+ * backward compatibility, the default will be to continue to use percent. If you wish to default
+ * to an absolute tolerance, you should comment out the line below.
+ */
+#define IRLIB_USE_PERCENT
+
+/*
+ * These are some miscellaneous definitions that are needed by the decoding routines. 
  * You need not include this file unless you are creating custom decode routines 
  * which will require these macros and definitions. Even if you include it, you probably
  * don't need to be intimately familiar with the internal details.
  */
 
 #define USECPERTICK 50  // microseconds per clock interrupt tick
-#define TOLERANCE 25  // percent tolerance in measurements
-#define TICKS_LOW(us) (unsigned int) (((us)*(1.0 - TOLERANCE/100.)))
-#define TICKS_HIGH(us) (unsigned int) (((us)*(1.0 + TOLERANCE/100.) + 1))
+#define PERCENT_TOLERANCE 25  // percent tolerance in measurements
+#define DEFAULT_ABS_TOLERANCE 75 //absolute tolerance in microseconds
 
-#define MATCH(measured_ticks, desired_us) ((measured_ticks) >= TICKS_LOW(desired_us) && (measured_ticks) <= TICKS_HIGH(desired_us))
+/* 
+ * These revised MATCH routines allow you to use either percentage were absolute tolerances.
+ * Use ABS_MATCH for absolute and PERC_MATCH percentages. The original MATCH macro
+ * is controlled by the IRLIB_USE_PERCENT definition a few lines above.
+ */
+ 
+#define PERCENT_LOW(us) (unsigned int) (((us)*(1.0 - PERCENT_TOLERANCE/100.)))
+#define PERCENT_HIGH(us) (unsigned int) (((us)*(1.0 + PERCENT_TOLERANCE/100.) + 1))
+
+#define ABS_MATCH(v,e,t) ((v) >= ((e)-(t)) && (v) <= ((e)+(t)))
+#define PERC_MATCH(v,e) ((v) >= PERCENT_LOW(e) && (v) <= PERCENT_HIGH(e))
+
+#ifdef IRLIB_USE_PERCENT
+#define MATCH(v,e) PERC_MATCH(v,e)
+#else
+#define MATCH(v,e) ABS_MATCH(v,e,DEFAULT_ABS_TOLERANCE)
+#endif
+
 //The following two routines are no longer necessary because mark/space adjustments are done elsewhere
 //These definitions maintain backward compatibility.
 #define MATCH_MARK(t,u) MATCH(t,u)
 #define MATCH_SPACE(t,u) MATCH(t,u)
 
-#ifdef TRACE
-void ATTEMPT_MESSAGE(const __FlashStringHelper * s);
-void TRACE_MESSAGE(const __FlashStringHelper * s);
-byte REJECTION_MESSAGE(const __FlashStringHelper * s);
-#define RAW_COUNT_ERROR REJECTION_MESSAGE(F("number of raw samples"));
-#define HEADER_MARK_ERROR REJECTION_MESSAGE(F("header mark"));
-#define HEADER_SPACE_ERROR REJECTION_MESSAGE(F("header space"));
-#define DATA_MARK_ERROR REJECTION_MESSAGE(F("data mark"));
-#define DATA_SPACE_ERROR REJECTION_MESSAGE(F("data space"));
-#define TRAILER_BIT_ERROR REJECTION_MESSAGE(F("RC5/RC6 trailer bit length"));
+#ifdef IRLIB_TRACE
+void IRLIB_ATTEMPT_MESSAGE(const __FlashStringHelper * s);
+void IRLIB_TRACE_MESSAGE(const __FlashStringHelper * s);
+byte IRLIB_REJECTION_MESSAGE(const __FlashStringHelper * s);
+byte IRLIB_DATA_ERROR_MESSAGE(const __FlashStringHelper * s, unsigned char index, unsigned int value, unsigned int expected);
+#define RAW_COUNT_ERROR IRLIB_REJECTION_MESSAGE(F("number of raw samples"));
+#define HEADER_MARK_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("header mark"),offset,rawbuf[offset],expected);
+#define HEADER_SPACE_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("header space"),offset,rawbuf[offset],expected);
+#define DATA_MARK_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("data mark"),offset,rawbuf[offset],expected);
+#define DATA_SPACE_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("data space"),offset,rawbuf[offset],expected);
+#define TRAILER_BIT_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("RC5/RC6 trailer bit length"),offset,rawbuf[offset],expected);
 #else
-#define ATTEMPT_MESSAGE(s)
-#define TRACE_MESSAGE(s)
-#define REJECTION_MESSAGE(s) false
+#define IRLIB_ATTEMPT_MESSAGE(s)
+#define IRLIB_TRACE_MESSAGE(s)
+#define IRLIB_REJECTION_MESSAGE(s) false
+#define IRLIB_DATA_ERROR_MESSAGE(s,i,v,e) false
 #define RAW_COUNT_ERROR false
-#define HEADER_MARK_ERROR false
-#define HEADER_SPACE_ERROR false
-#define DATA_MARK_ERROR false
-#define DATA_SPACE_ERROR false
-#define TRAILER_BIT_ERROR false
+#define HEADER_MARK_ERROR(expected) false
+#define HEADER_SPACE_ERROR(expected) false
+#define DATA_MARK_ERROR(expected) false
+#define DATA_SPACE_ERROR(expected) false
+#define TRAILER_BIT_ERROR(expected) false
 #endif
 
 #endif //IRLibMatch_h

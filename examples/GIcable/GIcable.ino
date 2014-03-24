@@ -1,5 +1,5 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.3   January 2014
+ * Version 1.4   March 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  * Based on original example sketch for IRremote library 
  * Version 0.11 September, 2009I know prescription and no
@@ -36,7 +36,7 @@ public:
  * is "{38.7k,490}<1,-4.5|1,-9>(18,-9,F:8,D:4,C:4,1,-84,(18,-4.5,1,-178)*) {C = -(D + F:4 + F:4:4)}"
  */
 bool IRdecodeGIcable::decode(void) {
-  ATTEMPT_MESSAGE(F("GIcable"));
+  IRLIB_ATTEMPT_MESSAGE(F("GIcable"));
   // Check for repeat
   if (rawlen == 4 && MATCH(rawbuf[1], 490*18) && MATCH(rawbuf[2],2205)) {
     bits = 0;
@@ -50,7 +50,6 @@ bool IRdecodeGIcable::decode(void) {
 };
 
 void IRsendGIcable::send(unsigned long data, bool Repeat) {
-  ATTEMPT_MESSAGE(F("sending GIcable"));
   if(Repeat) {
     enableIROut(39);
     mark (490*18); space (2205); mark (490); space(220);delay (87);//actually "space(87200);"
@@ -119,7 +118,11 @@ void setup()
   My_Receiver.enableIRIn(); // Start the receiver
 }
 void loop() {
-  if (Serial.read() != -1) {
+  if (Serial.available()>0) {
+    unsigned char c=Serial.read();
+    if (c=='p') {//Send a test pattern
+      GotOne= true;  codeType=GICABLE; codeValue=0x1234; codeBits=16;
+    }
     if(GotOne) {
       My_Sender.send(codeType,codeValue,codeBits);
       Serial.print(F("Sent "));

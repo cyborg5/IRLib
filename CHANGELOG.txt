@@ -1,6 +1,8 @@
 Change Log for IRLib – an Arduino library for infrared encoding and decoding
 Copyright 2013-2014 by Chris Young http://tech.cyborg5.com/irlib/
 
+Version 1.41 April 2014
+	Fixed interframe delay for JVC protocol
 Version 1.4 – March 2014
 	Added IRLIB_ prefix to debug macros to avoid name collisions
 	Debug macros now report more information

@@ -1,3 +1,0 @@
-= This is a test of the adoc format.
-
-This is only a test.

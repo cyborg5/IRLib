@@ -1,8 +1,11 @@
 Change Log for IRLib – an Arduino library for infrared encoding and decoding
 Copyright 2013-2014 by Chris Young http://tech.cyborg5.com/irlib/
 
+<<<<<<< HEAD
 Version 1.42 May 2014 
 	Added support ATmega256RFR2 based Pinoccio Scout platform with examples
+=======
+>>>>>>> a37f0095a61b276c020bce8106edb841fe0fd722
 Version 1.41 April 2014
 	Fixed interframe delay for JVC protocol
 Version 1.4 – March 2014

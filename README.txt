@@ -1,5 +1,5 @@
 IRLib – an Arduino library for infrared encoding and decoding
-Version 1.32 January 2014
+Version 1.42 May 2014
 Copyright 2013, 2014 by Chris Young http://cyborg5.com
  
 This library is a major rewrite of IRemote by Ken Shirriff which was covered 
@@ -70,6 +70,8 @@ Samsung36	Demonstrates how to expand the library without recompiling it.
 DirecTV		Demonstrates additional protocol for DirecTV
 GIcable		Demonstrates additional protocol for GIcable used by Motorola cable boxes
 rcmm		Additional protocol Phillips RCMM used by AT&T U-Verse boxes
+pinoccio		Demo sketches for Pinoccio Scout platform using ATmega256RFR2
+		Arduino compatible platform. See readme.txt in pinoccio folder for details.
 Note: I did not port any of the other demo sketches although I may add IRTest later.
 The manuals directory contains:
 IRLibReference.docx	Reference manual in Microsoft Word format

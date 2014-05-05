@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<link rel="stylesheet" type="text/css" href="remote.css" />
+	<script src="https://api.pinocc.io/pinoccio.js"></script>
+	<script src= "remote.js"></script>
+</head>
+<body>
+<h1>Pinoccio IR Remote</h1>
+Edit the "remote.js" to include your token, troop ID, and scout ID.<br>
+Connect an IR LED to pin D3 using a driver circuit.<br>
+Click <a href="iriopinoccio1.png">here for a schematic of simple circuit</a> which has limited range.<br>
+Click <a href="iriopinoccio.png">here for a more advanced circuit</a>.<br>
+Note that you do not need the receiver portion for this page to work.<br>
+<div id="LoginResults">
+</div>
+<table><tr height=80><td>
+	<div id="KeyMessage"> &nbsp;</div>
+	<div id="RemoteErr">&nbsp;</div>
+</td></tr></table>
+<table id="RemoteTable">
+</table>
+<script>myInitialize(); </script>
+</body>
+</html>

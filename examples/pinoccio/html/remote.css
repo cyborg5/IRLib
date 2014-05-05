@@ -1,0 +1,9 @@
+.error{ color:#ff0000; }
+body {font-family:Arial, Helvetica, sans-serif;}
+h1 {text-align: center;}
+.MyButtons {background-image: url("button.png"); width:59px; height:59px;
+text-align: center; vertical-align: middle; font-weight: bold}
+option{white-space:pre;}
+#KeyMessage {white-space:pre;}
+.Big {font-size:20pt}
+.Tall{line-height:24pt}

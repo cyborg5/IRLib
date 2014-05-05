@@ -1,5 +1,5 @@
 /* IRLib.cpp from IRLib - an Arduino library for infrared encoding and decoding
- * Version 1.4   March 2014
+ * Version 1.41   April 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -141,7 +141,7 @@ void IRsendPanasonic_Old::send(unsigned long data)
 void IRsendJVC::send(unsigned long data, bool First)
 {
   sendGeneric(data, 16,525*16*First, 525*8*First, 525, 525,525*3, 525, 38, true);
-  delayMicroseconds(45);
+  space(525*45);
   if(First) sendGeneric(data, 16,0,0, 525, 525,525*3, 525, 38, true);
 }
 

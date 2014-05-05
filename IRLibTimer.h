@@ -1,5 +1,5 @@
 /* IRLibTimer.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.4   March 2014
+ * Version 1.42   May 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -80,7 +80,11 @@
 #elif defined(__AVR_ATmega644P__) || defined(__AVR_ATmega644__)
   //#define IR_USE_TIMER1   // tx = pin 13
   #define IR_USE_TIMER2     // tx = pin 14
-  
+
+// Pinoccio Scout 
+#elif defined(__AVR_ATmega256RFR2__)
+  #define IS_PINOCCIO
+  #define IR_USE_TIMER3     // tx = pin D3
 // Arduino Duemilanove, Diecimila, LilyPad, Mini, Fio, etc
 #else
   //#define IR_USE_TIMER1   // tx = pin 9
@@ -192,6 +196,8 @@
 #define TIMER_PWM_PIN        5  /* Arduino Mega */
 #elif defined(__AVR_ATmega32U4__)
 #define TIMER_PWM_PIN        5  /* Arduino Leonardo note already checked for Teensy */
+#elif defined(__AVR_ATmega256RFR2__)
+#define TIMER_PWM_PIN        3  /* Pinoccio Scout */
 #else
 #error "Please add OC3A pin number here\n"
 #endif

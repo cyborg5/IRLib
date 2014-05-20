@@ -57,8 +57,9 @@ typedef char IRTYPES; //formerly was an enum
 #define PANASONIC_OLD 5
 #define JVC 6
 #define NECX 7
+#define SAMSUNG 8
 //#define ADDITIONAL (number) //make additional protocol 8 and change HASH_CODE to 9
-#define HASH_CODE 8
+#define HASH_CODE 9
 #define LAST_PROTOCOL HASH_CODE
 
 const __FlashStringHelper *Pnames(IRTYPES Type); //Returns a character string that is name of protocol.
@@ -226,6 +227,12 @@ public:
   void send(unsigned long data);
 };
 
+class IRsendSamsung: public virtual IRsendBase
+{
+public:
+  void send(unsigned long data);
+};
+
 class IRsend: 
 public virtual IRsendNEC,
 public virtual IRsendSony,
@@ -234,7 +241,8 @@ public virtual IRsendRC5,
 public virtual IRsendRC6,
 public virtual IRsendPanasonic_Old,
 public virtual IRsendJVC,
-public virtual IRsendNECx
+public virtual IRsendNECx,
+public virtual IRsendSamsung
 // , public virtual IRsendADDITIONAL //add additional protocols here
 {
 public:

@@ -227,7 +227,7 @@ void IRsendRC6::send(unsigned long data, unsigned char nbits)
 }
 
 /*
- * Samsung IR Protocol as described in the comments on
+ * Samsung 32bit IR Protocol as described in the comments on
  * http://www.righto.com/2009/08/multi-protocol-infrared-remote-library.html
  * Code transmission must be repeated 3 times with a short delay (30ms?)
  * Example code: 0xE0E040BF = TV Power

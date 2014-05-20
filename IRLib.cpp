@@ -39,7 +39,7 @@ volatile irparams_t irparams;
 const __FlashStringHelper *Pnames(IRTYPES Type) {
   if(Type>LAST_PROTOCOL) Type=UNKNOWN;
   // You can add additional strings before the entry for hash code.
-  const __FlashStringHelper *Names[LAST_PROTOCOL+1]={F("Unknown"),F("NEC"),F("Sony"),F("RC5"),F("RC6"),F("Panasonic Old"),F("JVC"),F("NECx"),F("Hash Code")};
+  const __FlashStringHelper *Names[LAST_PROTOCOL+1]={F("Unknown"),F("NEC"),F("Sony"),F("RC5"),F("RC6"),F("Panasonic Old"),F("JVC"),F("NECx"),F("Samsung"),F("Hash Code")};
   return Names[Type];
 };
 
@@ -227,6 +227,39 @@ void IRsendRC6::send(unsigned long data, unsigned char nbits)
 }
 
 /*
+ * Samsung IR Protocol as described in the comments on
+ * http://www.righto.com/2009/08/multi-protocol-infrared-remote-library.html
+ * Code transmission must be repeated 3 times with a short delay (30ms?)
+ * Example code: 0xE0E040BF = TV Power
+ */
+#define SAMSUNG_HDR_MARK 4500
+#define SAMSUNG_BITS 32
+#define SAMSUNG_HDR_SPACE 4500
+#define SAMSUNG_BIT_MARK 560
+#define SAMSUNG_ONE_SPACE 1600
+#define SAMSUNG_ZERO_SPACE 600
+void IRsendSamsung::send(unsigned long data)
+{
+  unsigned char nbits = SAMSUNG_BITS;
+  enableIROut(38);
+  mark(SAMSUNG_HDR_MARK);
+  space(SAMSUNG_HDR_SPACE);
+  for (int i = 0; i < nbits; i++) {
+    if (data & TOPBIT) {
+      mark(SAMSUNG_BIT_MARK);
+      space(SAMSUNG_ONE_SPACE);
+    }
+    else {
+      mark(SAMSUNG_BIT_MARK);
+      space(SAMSUNG_ZERO_SPACE);
+    }
+    data <<= 1;
+  }
+  mark(SAMSUNG_BIT_MARK);
+  space(0);
+}
+
+/*
  * This method can be used to send any of the supported types except for raw and hash code.
  * There is no hash code send possible. You can call sendRaw directly if necessary.
  * Typically "data2" is the number of bits.
@@ -240,6 +273,7 @@ void IRsend::send(IRTYPES Type, unsigned long data, unsigned int data2) {
     case PANASONIC_OLD: IRsendPanasonic_Old::send(data); break;
     case NECX:          IRsendNECx::send(data); break;    
     case JVC:           IRsendJVC::send(data,(bool)data2); break;
+    case SAMSUNG:       IRsendSamsung::send(data); break;
   //case ADDITIONAL:    IRsendADDITIONAL::send(data); break;//add additional protocols here
 	//You should comment out protocols you will likely never use and/or add extra protocols here
   }

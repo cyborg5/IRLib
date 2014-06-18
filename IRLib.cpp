@@ -1,5 +1,5 @@
 /* IRLib.cpp from IRLib - an Arduino library for infrared encoding and decoding
- * Version 1.41   April 2014
+ * Version 1.5   June 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -257,6 +257,7 @@ void IRsend::send(IRTYPES Type, unsigned long data, unsigned int data2) {
  */
 IRdecodeBase::IRdecodeBase(void) {
   rawbuf=(volatile unsigned int*)irparams.rawbuf;
+  IgnoreHeader=false;
   Reset();
 };
 
@@ -293,15 +294,19 @@ void IRdecodeBase::Reset(void) {
   bits=0;
   rawlen=0;
 };
-
+#ifndef USE_DUMP
+void DumpUnavailable(void) {Serial.println(F("DumpResults unavailable"));}
+#endif
 /*
  * This method dumps useful information about the decoded values.
  */
 void IRdecodeBase::DumpResults(void) {
+#ifdef USE_DUMP
   int i;unsigned long Extent;int interval;
   if(decode_type<=LAST_PROTOCOL){
     Serial.print(F("Decoded ")); Serial.print(Pnames(decode_type));
-    Serial.print(F(": Value:")); Serial.print(value, HEX);
+	Serial.print(F("(")); Serial.print(decode_type,DEC);
+    Serial.print(F("): Value:")); Serial.print(value, HEX);
   };
   Serial.print(F(" ("));  Serial.print(bits, DEC); Serial.println(F(" bits)"));
   Serial.print(F("Raw samples(")); Serial.print(rawlen, DEC);
@@ -333,6 +338,9 @@ void IRdecodeBase::DumpResults(void) {
   Serial.print(F("Mark  min:")); Serial.print(LowMark,DEC);Serial.print(F("\t max:")); Serial.println(HiMark,DEC);
   Serial.print(F("Space min:")); Serial.print(LowSpace,DEC);Serial.print(F("\t max:")); Serial.println(HiSpace,DEC);
   Serial.println();
+#else
+  DumpUnavailable();
+#endif
 }
 
 /*
@@ -348,7 +356,11 @@ bool IRdecodeBase::decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark
 // Some protocols need to do custom header work.
   unsigned long data = 0;  unsigned char Max; offset=1;
   if (Raw_Count) {if (rawlen != Raw_Count) return RAW_COUNT_ERROR;}
-  if (Head_Mark) {if (!MATCH(rawbuf[offset],Head_Mark))    return HEADER_MARK_ERROR(Head_Mark);}
+  if(!IgnoreHeader) {
+    if (Head_Mark) {
+	  if (!MATCH(rawbuf[offset],Head_Mark)) return HEADER_MARK_ERROR(Head_Mark);
+	}
+  }
   offset++;
   if (Head_Space) {if (!MATCH(rawbuf[offset],Head_Space)) return HEADER_SPACE_ERROR(Head_Space);}
 
@@ -474,12 +486,12 @@ bool IRdecodePanasonic_Old::decode(void) {
    * Many protocols have such check features in their definition but our code typically doesn't
    * perform these checks. For example NEC's least significant 8 bits are the complement of 
    * of the next more significant 8 bits. While it's probably not necessary to error check this, 
-   * here is some sample code to show you how.
+   * you can un-comment the next 4 lines of code to do this extra checking.
    */
-  long S1= (value & 0x0007ff);       // 00 0000 0000 0111 1111 1111 //00000 000000 11111 111111
-  long S2= (value & 0x3ff800)>> 11;  // 11 1111 1111 1000 0000 0000 //11111 111111 00000 000000
-  S2= (~S2) & 0x0007ff;
-  if (S1!=S2) return IRLIB_REJECTION_MESSAGE(F("inverted bit redundancy"));
+//  long S1= (value & 0x0007ff);       // 00 0000 0000 0111 1111 1111 //00000 000000 11111 111111
+//  long S2= (value & 0x3ff800)>> 11;  // 11 1111 1111 1000 0000 0000 //11111 111111 00000 000000
+//  S2= (~S2) & 0x0007ff;
+//  if (S1!=S2) return IRLIB_REJECTION_MESSAGE(F("inverted bit redundancy"));
   // Success
   decode_type = PANASONIC_OLD;
   return true;
@@ -551,7 +563,10 @@ IRdecodeRC::RCLevel IRdecodeRC::getRClevel(unsigned char *used, const unsigned i
     avail = 3;
   } 
   else {
-    return ERROR;
+    if((IgnoreHeader) && (offset==1) && (width<t1))
+	  avail =1;
+	else{
+      return ERROR;}
   }
   (*used)++;
   if (*used >= avail) {
@@ -601,7 +616,9 @@ bool IRdecodeRC6::decode(void) {
   IRLIB_ATTEMPT_MESSAGE(F("RC6"));
   if (rawlen < MIN_RC6_SAMPLES) return RAW_COUNT_ERROR;
   // Initial mark
-  if (!MATCH(rawbuf[1], RC6_HDR_MARK)) return HEADER_MARK_ERROR(RC6_HDR_MARK);
+  if (!IgnoreHeader) {
+    if (!MATCH(rawbuf[1], RC6_HDR_MARK)) return HEADER_MARK_ERROR(RC6_HDR_MARK);
+  }
   if (!MATCH(rawbuf[2], RC6_HDR_SPACE)) return HEADER_SPACE_ERROR(RC6_HDR_SPACE);
   offset=3;//Skip gap and header
   data = 0;
@@ -760,27 +777,10 @@ bool IRrecvLoop::GetResults(IRdecodeBase *decoder) {
 
 IRrecvPCI::IRrecvPCI(unsigned char inum) {
   Init();
-  switch(intrnum=inum) {
-#if defined(__AVR_ATmega32U4__) //Assume Arduino Leonardo
-    case 0: irparams.recvpin=3; break;
-    case 1: irparams.recvpin=2; break;
-    case 2: irparams.recvpin=0; break;
-    case 3: irparams.recvpin=1; break;
-    case 4: irparams.recvpin=7; break;
-#else //Arduino Uno or Mega 
-    case 0: irparams.recvpin=2; break;
-    case 1: irparams.recvpin=3; break;
-  #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)//Mega only
-    case 2: irparams.recvpin=21; break;
-    case 3: irparams.recvpin=20; break;
-    case 4: irparams.recvpin=19; break;
-    case 5: irparams.recvpin=18; break;
-  #endif
-#endif
-    //Illegal vaalue to flag you that something is wrong
-    default:  irparams.recvpin=255; 
+  intrnum=inum;
+  irparams.recvpin=Pin_from_Intr(inum);
+
   }
-}
 void IRrecvPCI_Handler(){ 
   unsigned long volatile ChangeTime=micros();
   unsigned long DeltaTime=ChangeTime-irparams.timer;
@@ -830,8 +830,90 @@ bool IRrecvPCI::GetResults(IRdecodeBase *decoder) {
   return true;
 };
 
+ /* This class facilitates detection of frequency of an IR signal. Requires a TSMP58000
+ * or equivalent device connected to the hardware interrupt pin.
+ * Create an instance of the object passing the interrupt number.
+ */
+volatile unsigned FREQUENCY_BUFFER_TYPE *IRfreqTimes;
+volatile unsigned char IRfreqCount;
+IRfrequency::IRfrequency(unsigned char inum) {  //Note this is interrupt number, not pin number
+  intrnum=inum;
+  pin= Pin_from_Intr(inum);
+  //ISR cannot be passed parameters. If I declare the buffer global it would
+  //always eat RAN even if this object was not declared. So we make global pointer
+  //and copy the address to it. ISR still puts data in the object.
+  IRfreqTimes= & (Time_Stamp[0]);
+};
+
+// Note ISR handler cannot be part of a class/object
+void IRfreqISR(void) {
+   IRfreqTimes[IRfreqCount++]=micros();
+}
+
+void IRfrequency::enableFreqDetect(void){
+  attachInterrupt(intrnum,IRfreqISR, FALLING);
+  for(i=0; i<256; i++) Time_Stamp[i]=0;
+  IRfreqCount=0;
+  Results= 0.0;
+  Samples=0;
+};
+/* Test to see if we have collected at least one full buffer of data.
+ * Note values are always zeroed before beginning so any non-zero data
+ * in the final elements means we have collected at least a buffer full.
+ * By chance the final might be zero so we test two of them. Would be
+ * nearly impossible for two consecutive elements to be zero unless
+ * we had not yet collected data.
+ */
+bool IRfrequency::HaveData(void) {
+  return (Time_Stamp[255] || Time_Stamp[254]);
+};
+
+void IRfrequency::disableFreqDetect(void){
+  detachInterrupt(intrnum);
+ };
+
+void IRfrequency::ComputeFreq(void){
+   Samples=0; Sum=0;
+   for(i=1; i<256; i++) {
+     unsigned char Interval=Time_Stamp[i]-Time_Stamp[i-1];
+	 if(Interval>50 || Interval<10) continue;//ignore extraneous results
+	 Sum+=Interval;//accumulate usable intervals
+	 Samples++;    //account usable intervals
+   };
+   if(Sum)
+     Results=(double) Samples/(double)Sum*1000;
+   else
+     Results= 0.0;
+ };
  
- 
+//Didn't need to be a method that we made one following example of IRrecvBase
+unsigned char IRfrequency::getPinNum(void) {
+  return pin;
+}
+
+void IRfrequency::DumpResults(bool Detail) {
+  ComputeFreq();
+#ifdef USE_DUMP
+  Serial.print(F("Number of samples:")); Serial.print(Samples,DEC);
+  Serial.print(F("\t  Total interval (us):")); Serial.println(Sum,DEC); 
+  Serial.print(F("Avg. interval(us):")); Serial.print(1.0*Sum/Samples,2);
+  Serial.print(F("\t Aprx. Frequency(kHz):")); Serial.print(Results,2);
+  Serial.print(F(" (")); Serial.print(int(Results+0.5),DEC);
+  Serial.println(F(")"));
+  if(Detail) {
+    for(i=1; i<256; i++) {
+      unsigned int Interval=Time_Stamp[i]-Time_Stamp[i-1];
+      Serial.print(Interval,DEC); Serial.print("\t");
+      if ((i % 4)==0)Serial.print(F("\t "));
+      if ((i % 8)==0)Serial.println();
+      if ((i % 32)==0)Serial.println();
+    }
+    Serial.println();
+  }
+#else
+  DumpUnavailable(); 
+#endif
+};
  
  
 /*
@@ -839,6 +921,30 @@ bool IRrecvPCI::GetResults(IRdecodeBase *decoder) {
  * nothing to do with IR protocols. You need not understand this is all you're doing is adding 
  * new protocols or improving the receiving, decoding and sending of protocols.
  */
+
+//See IRLib.h comment explaining this function
+ unsigned char Pin_from_Intr(unsigned char inum) {
+  const unsigned char PROGMEM attach_to_pin[]= {
+#if defined(__AVR_ATmega256RFR2__)//Assume Pinoccio Scout
+	4,5,SCL,SDA,RX1,TX1,7
+#elif defined(__AVR_ATmega32U4__) //Assume Arduino Leonardo
+	3,2,0,1,7
+#elif defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)//Assume Arduino Mega 
+	2,3, 21, 20, 1, 18
+#else	//Assume Arduino Uno or other ATmega328
+	2, 3
+#endif
+  };
+#if defined(ARDUINO_SAM_DUE)
+  return inum;
+#endif
+  if (inum<sizeof attach_to_pin) {//note this works because we know it's one byte per entry
+	return attach_to_pin[inum];
+  } else {
+    return 255;
+  }
+}
+
 // Provides ISR
 #include <avr/interrupt.h>
 // defines for setting and clearing register bits
@@ -867,8 +973,10 @@ bool IRrecvPCI::GetResults(IRdecodeBase *decoder) {
  * and doesn't turn on your IR LED or any output circuit.
  */
 void IRrecvBase::No_Output (void) {
- pinMode(TIMER_PWM_PIN, OUTPUT);  
- digitalWrite(TIMER_PWM_PIN, LOW); // When not sending PWM, we want it low    
+#if defined(IR_SEND_PWM_PIN)
+ pinMode(IR_SEND_PWM_PIN, OUTPUT);  
+ digitalWrite(IR_SEND_PWM_PIN, LOW); // When not sending PWM, we want it low    
+#endif
 }
 
 // enable/disable blinking of pin 13 on IR processing
@@ -892,7 +1000,7 @@ void do_Blink(void) {
     }
   }
 }
-
+#ifdef USE_IRRECV
 /*
  * The original IRrecv which uses 50µs timer driven interrupts to sample input pin.
  */
@@ -906,9 +1014,8 @@ void IRrecv::enableIRIn(void) {
   IRrecvBase::enableIRIn();
   // setup pulse clock timer interrupt
   cli();
-  TIMER_CONFIG_NORMAL();
-  TIMER_ENABLE_INTR;
-  TIMER_RESET;
+  IR_RECV_CONFIG_TICKS();
+  IR_RECV_ENABLE_INTR;
   sei();
 }
 
@@ -928,9 +1035,8 @@ bool IRrecv::GetResults(IRdecodeBase *decoder) {
  * As soon as a SPACE gets long, ready is set, state switches to IDLE, timing of SPACE continues.
  * As soon as first MARK arrives, gap width is recorded, ready is cleared, and new logging starts.
  */
-ISR(TIMER_INTR_NAME)
+ISR(IR_RECV_INTR_NAME)
 {
-  TIMER_RESET;
   enum irdata_t {IR_MARK=0, IR_SPACE=1};
   irdata_t irdata = (irdata_t)digitalRead(irparams.recvpin);
   irparams.timer++; // One more 50us tick
@@ -985,7 +1091,7 @@ ISR(TIMER_INTR_NAME)
   }
   do_Blink();
 }
-
+#endif //end of ifdef USE_IRRECV
 /*
  * The hardware specific portions of IRsendBase
  */
@@ -1004,15 +1110,15 @@ void IRsendBase::enableIROut(unsigned char khz) {
   // See my Secrets of Arduino PWM at http://www.righto.com/2009/07/secrets-of-arduino-pwm.html for details.
   
   // Disable the Timer2 Interrupt (which is used for receiving IR)
- TIMER_DISABLE_INTR; //Timer2 Overflow Interrupt    
- pinMode(TIMER_PWM_PIN, OUTPUT);  
- digitalWrite(TIMER_PWM_PIN, LOW); // When not sending PWM, we want it low    
- TIMER_CONFIG_KHZ(khz);
+ IR_RECV_DISABLE_INTR; //Timer2 Overflow Interrupt    
+ pinMode(IR_SEND_PWM_PIN, OUTPUT);  
+ digitalWrite(IR_SEND_PWM_PIN, LOW); // When not sending PWM, we want it low    
+ IR_SEND_CONFIG_KHZ(khz);
  }
 
 IRsendBase::IRsendBase () {
- pinMode(TIMER_PWM_PIN, OUTPUT);  
- digitalWrite(TIMER_PWM_PIN, LOW); // When not sending PWM, we want it low    
+ pinMode(IR_SEND_PWM_PIN, OUTPUT);  
+ digitalWrite(IR_SEND_PWM_PIN, LOW); // When not sending PWM, we want it low    
 }
 
 //The Arduino built in function delayMicroseconds has limits we wish to exceed
@@ -1022,13 +1128,13 @@ void  My_delay_uSecs(unsigned int T) {
 }
 
 void IRsendBase::mark(unsigned int time) {
- TIMER_ENABLE_PWM;
- My_delay_uSecs(time);
+ IR_SEND_PWM_START;
+ IR_SEND_MARK_TIME(time);
  Extent+=time;
 }
 
 void IRsendBase::space(unsigned int time) {
- TIMER_DISABLE_PWM;
+ IR_SEND_PWM_STOP;
  My_delay_uSecs(time);
  Extent+=time;
 }

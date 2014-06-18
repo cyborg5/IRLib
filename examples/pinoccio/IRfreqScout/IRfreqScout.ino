@@ -6,22 +6,32 @@
  * at http://analysir.com for their assistance In developing this program.
  */
 /*
- * IRLib: IRfreq - dump details of IR codes with IRrecvPCI and
- * measures frequency using IRfrequency. You must connect an IR learner 
- * such as TSMP58000 to a hardware interrupt pin.
+ * IRLib: IRFreqScout - measures frequency using IRfrequency. You must
+ * connect an IR learner such as TSMP58000 to a hardware interrupt pin.
  */
+/*
+ * This is a version of IRfreq modified for use with Pinoccio Scout
+ * Based upon "Bootstrap.ino" by the Pinoccio team
+ * https://pinocc.io/
+ */
+#include <SPI.h>
+#include <Wire.h>
+#include <Scout.h>
+#include <GS.h>
+#include <bitlash.h>
+#include <lwm.h>
+#include <js0n.h>
 
+#include "version.h"
 #include <IRLib.h>
-
-#define FREQUENCY_INTERRUPT 0
+#define FREQUENCY_INTERRUPT 6
 
 IRfrequency My_Freq(FREQUENCY_INTERRUPT);
 
 void setup()
 {
-  Serial.begin(9600);
-  delay(2000);while(!Serial);//delay for Leonardo
-  Serial.print(F("Interrupt="));Serial.print(FREQUENCY_INTERRUPT,DEC);
+  Scout.setup(SKETCH_NAME, SKETCH_REVISION, SKETCH_BUILD);
+  Serial.print(F("\nInterrupt="));Serial.print(FREQUENCY_INTERRUPT,DEC);
   Serial.print(F(" Pin=")); Serial.println(My_Freq.getPinNum(),DEC);
   if(My_Freq.getPinNum()==255)
     Serial.println(F("Invalid interrupt number."));
@@ -29,11 +39,12 @@ void setup()
 }
 
 void loop() {
+  Scout.loop();
   if (My_Freq.HaveData()) {
-    delay(500);  //it couldn't hurt to collect a little more just in case
+    delay(500);  //It couldn't hurt to collect a little bit more just in case
     My_Freq.disableFreqDetect();
     My_Freq.DumpResults(false);//Change to "true" for more detail
-    My_Freq.enableFreqDetect();//Zero out previous results and restart YSR
+    My_Freq.enableFreqDetect();//Zero out previous results and restart ISR
   }
 }
 

@@ -1,6 +1,14 @@
 Change Log for IRLib – an Arduino library for infrared encoding and decoding
 Copyright 2013-2014 by Chris Young http://tech.cyborg5.com/irlib/
 
+Version 1.5 June 2014
+	New bit-bang option for PWM output frequency setting. Now can use any output pin with no hardware timers. Note:bit-bang output not as accurate as timer-based frequency selection.
+	Major rewrite of IRLibTimer.h to facilitate bit-bang. Separated hardware timer selection and specification into sending and receiving sections in order to implement bit-bang.
+	New IRfrequency class for detecting input frequencies. Previously was a stand-alone special sketch but now is a class including a DumpResults method.
+	New IRfreq and IRrecvDumpFreq illustrate simultaneous detection of frequency and pattern with both an IR learner and IR receiver is connected.
+	New #define USE_IRRECV define can be commented out to completely remove the interrupt driven IRrecv receiver class from the library. This resolves ISR conflicts with other libraries such as Tone() when not using IRrecv class.
+	New #define USE_DUMP define can be commented out to disable DumpResults methods. Saves code space when these methods are not needed.
+	Revised user manuals to document new features and correct previous documentation problems.
 Version 1.42 May 2014 
 	Added support ATmega256RFR2 based Pinoccio Scout platform with examples
 Version 1.41 April 2014

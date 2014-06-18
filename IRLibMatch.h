@@ -1,5 +1,5 @@
 /* IRLibMatch.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.4   March 2014
+ * Version 1.5   June 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -51,8 +51,8 @@
 #define DEFAULT_ABS_TOLERANCE 75 //absolute tolerance in microseconds
 
 /* 
- * These revised MATCH routines allow you to use either percentage were absolute tolerances.
- * Use ABS_MATCH for absolute and PERC_MATCH percentages. The original MATCH macro
+ * These revised MATCH routines allow you to use either percentage or absolute tolerances.
+ * Use ABS_MATCH for absolute and PERC_MATCH for percentages. The original MATCH macro
  * is controlled by the IRLIB_USE_PERCENT definition a few lines above.
  */
  

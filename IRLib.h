@@ -1,5 +1,5 @@
 /* IRLib.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.4   March 2014
+ * Version 1.5   June 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -36,8 +36,18 @@
 // If IRLIB_TRACE is defined, some debugging information about the decode will be printed
 // IRLIB_TEST must be defined for the IRtest unittests to work.  It will make some
 // methods virtual, which will be slightly slower, which is why it is optional.
-// #define IRLIB_TRACE
+//#define IRLIB_TRACE
 // #define IRLIB_TEST
+
+/* If not using the IRrecv class but only using IRrecvPCI or IRrecvLoop you can eliminate
+ * some conflicts with the duplicate definition of ISR by turning this feature off.
+ * Comment out the following define to eliminate the conflicts.
+ */
+#define USE_IRRECV
+/* If not using either DumpResults methods of IRdecode nor IRfrequency you can
+ * comment out the following define to eliminate considerable program space.
+ */
+#define USE_DUMP
 
 // Only used for testing; can remove virtual for shorter code
 #ifdef IRLIB_TEST
@@ -73,6 +83,7 @@ public:
   unsigned char bits;            // Number of bits in decoded value
   volatile unsigned int *rawbuf; // Raw intervals in microseconds
   unsigned char rawlen;          // Number of records in rawbuf.
+  bool IgnoreHeader;             // Relaxed header detection allows AGC to settle
   virtual void Reset(void);      // Initializes the decoder
   virtual bool decode(void);     // This base routine always returns false override with your routine
   bool decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark, unsigned int Head_Space, 
@@ -176,6 +187,7 @@ protected:
   VIRTUAL void mark(unsigned int usec);
   VIRTUAL void space(unsigned int usec);
   unsigned long Extent;
+  unsigned char OnTime,OffTime,iLength;//used by bit-bang output.
 };
 
 class IRsendNEC: public virtual IRsendBase
@@ -264,6 +276,7 @@ protected:
  * when trying to analyze unknown protocols, the 50µs granularity may not be sufficient.
  * In that case use either the IRrecvLoop or the IRrecvPCI class.
  */
+#ifdef USE_IRRECV
 class IRrecv: public IRrecvBase
 {
 public:
@@ -272,6 +285,7 @@ public:
   void enableIRIn(void);
   void resume(void);
 };
+#endif
 /* This receiver uses no interrupts or timers. Other interrupt driven receivers
  * allow you to do other things and call GetResults at your leisure to see if perhaps
  * a sequence has been received. Typically you would put GetResults in your loop
@@ -309,12 +323,46 @@ private:
   unsigned char intrnum;
 };
 
+/* This class facilitates detection of frequency of an IR signal. Requires a TSMP58000
+ * or equivalent device connected to the hardware interrupt pin.
+ * Create an instance of the object passing the interrupt number.
+ */
+//Un-comment only one of the following three lines depending on available RAM
+//#define FREQUENCY_BUFFER_TYPE unsigned char
+#define FREQUENCY_BUFFER_TYPE int
+//#define FREQUENCY_BUFFER_TYPE long
+class IRfrequency
+{
+public:
+  //Note this is interrupt number, not pin number
+  IRfrequency(unsigned char inum);
+  void enableFreqDetect(void);
+  bool HaveData(void);      //detective data received
+  void disableFreqDetect(void);
+  void ComputeFreq(void);	//computes but does not print results
+  void DumpResults(bool Detail);	//computes and prints result
+  unsigned char getPinNum(void);//get value computed from interrupt number
+  double Results; //results in kHz
+  unsigned char Samples; //number of samples used in computation
+private:
+  volatile unsigned FREQUENCY_BUFFER_TYPE Time_Stamp[256];
+  unsigned char intrnum, pin;
+  unsigned int i;
+  unsigned long Sum;
+};
 
 //Do the actual blinking off and on
 //This is not part of IRrecvBase because it may need to be inside an ISR
 //and we cannot pass parameters to them.
 void do_Blink(void);
 
+/* This routine maps interrupt numbers used by attachInterrupt() into pin numbers.
+ * NOTE: these interrupt numbers which are passed to “attachInterrupt()” are not 
+ * necessarily identical to the interrupt numbers in the datasheet of the processor 
+ * chip you are using. These interrupt numbers are a system unique to the 
+ * “attachInterrupt()” Arduino function.  It is used by both IRrecvPCI and IRfrequency.
+ */
+unsigned char Pin_from_Intr(unsigned char inum);
 // Some useful constants
 // Decoded value for NEC when a repeat code is received
 #define REPEAT 0xffffffff

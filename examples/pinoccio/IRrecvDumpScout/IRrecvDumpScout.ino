@@ -1,5 +1,5 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.42   May 2014
+ * Version 1.5  June 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  * Based on original example sketch for IRremote library 
  * Version 0.11 September, 2009
@@ -22,7 +22,8 @@
 #include <bitlash.h>
 #include <lwm.h>
 #include <js0n.h>
-#include <Arduino.h>
+
+#include "version.h"
 
 #include <IRLib.h>  //Include the library
 int RECV_PIN = 4;    //Any digital I/O pin would work. We recommend 4
@@ -32,7 +33,7 @@ unsigned int Buffer[RAWBUF];
 
 void setup()
 {
-  Scout.setup();
+  Scout.setup(SKETCH_NAME, SKETCH_REVISION, SKETCH_BUILD);
   My_Receiver.enableIRIn(); // Start the receiver
   My_Decoder.UseExtnBuf(Buffer);
 }

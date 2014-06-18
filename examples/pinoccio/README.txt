@@ -1,5 +1,5 @@
 IRLib – an Arduino library for infrared encoding and decoding
-Version 1.42 May 2014
+Version 1.5 June 2014
 Copyright 2013, 2014 by Chris Young http://cyborg5.com
  
 This library is covered by the GNU LESSER GENERAL PUBLIC LICENSE.
@@ -12,13 +12,14 @@ based on the Atmel ATmega256RFR2 8-bit processor with 256K flash memory, 30 2K S
 an available Wi-Fi backpack. Is billed as "A Complete Ecosystem for Building the Internet of Things".
 (By the way Pinoccio is not a typo. They really do spell it without the "h")
 
-It is currently only available to the original backers but will be available shortly as a public beta test.
+It was initially only available to the original backers but is now available as a public beta test.
 For more information on the platform see https://pinocc.io/
 
 This IRLib package automatically detects the ATmega256RFR2 processor in IRLibTimer.h. We have included
-a Pinoccio Scout specific version of the IRrecvDump sample sketch for receiving IR signals. There is also
-sketch that adds an "ir.send(p,c,b)" command to the Scout Script language used by the system.
-You can use the hq.pinocc.io portal on a Google Chrome browser to send IR codes using this command.
+a Pinoccio Scout specific version of the IRrecvDump sample sketch for receiving IR signals and various 
+other sample sketches. There is also sketch that adds an "ir.send(p,c,b)" command to the Scout Script 
+language used by the system. You can use the hq.pinocc.io portal on a Google Chrome browser to send IR
+codes using this command.
 
 You should be able to adapt any other sample sketches or IRLib code of your own into the Pinoccio
 infrastructure files by looking at those examples we provide.
@@ -37,6 +38,9 @@ digital pin D3. Any input pin can be used for receiving but we recommend D4.
 ****************************************************
 The folder contains:
 IRrecvDumpScout	Pinoccio Scout version of IRrecvDump sample sketch decoding codes. 
+IRfreqScout	Frequency detection sketch ported to Pinoccio
+IRrecvDumpFreqScout	Detect frequency and pattern simultaneously.
 IRsendScout	Sketch adds "ir.send(p,c,b)" command to Scout Script
 html		Folder contains a simple web application in HTML and JavaScript for a
 		TV and cable box remote control use with IRsend Scout.
+README.txt	This file.

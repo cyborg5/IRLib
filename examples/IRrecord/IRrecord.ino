@@ -1,5 +1,5 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.3   January 2014
+ * Version 1.5  June 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  * Based on original example sketch for IRremote library 
  * Version 0.11 September, 2009
@@ -17,7 +17,7 @@
  * the library routines.
  * The logic is:
  * If an IR code is received, record it.
- * If g serial character is received, send the IR code.
+ * If a serial character is received, send the IR code.
  */
 
 #include <IRLib.h>

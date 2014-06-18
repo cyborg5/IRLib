@@ -1,18 +1,15 @@
 var api=pinoccioAPI();
-//Enter your token here. Also troop ID and scout ID
 
+//Enter your token here. Also troop ID and scout ID
 api.token="enter your token here";
 var troopid= 1;//replace this "1" with your troop ID
 var scoutid=1;//replace this "1" with your scout ID
 
 //handles to various parts of the screen. Initialized in myInitialize()
 var LoginResults, RemoteErr, RemoteTable, KeyMessage;
-var SendingFlag, DisplaySymbols;
+var DisplaySymbols;
 var myAccount= {};
 var HotKeys= [];
-// The codes below are for a Samsung TV and a Cisco/SA Bright House cable box
-// You can edit it for any codes you want. Also any number of rows and columns.
-// Each entry is protocol number, code, number of bits, label, keycode
 var Button= [//object containing all buttons
 	[//object containing row 0
 		[7,0xe0e0e01f,0, "V+",187],//Object containing button 1
@@ -113,13 +110,13 @@ function myInitialize() {
 	RemoteErr=document.getElementById ("RemoteErr");
 	RemoteTable=document.getElementById("RemoteTable");
 	KeyMessage=document.getElementById("KeyMessage");
+	CommandQueue=document.getElementById("CommandQueue");
 	document.onkeydown= function(e){KeyHandler(e);};
-	SendingFlag=0;
 	myGetAccountInfo(true,
 		function(err) {
 			if(err) {
-				RemoteErr.innerHTML="Error with Token ='"+api.token+"'   troop ID: "+troopid+
-					"    scout ID: "+ scoutid;
+				RemoteErr.innerHTML="Error with Token ='"+api.token+"' troop ID: "+troopid+
+					"scout ID: "+ scoutid;
 			} else {
 				LoginResults.innerHTML= 
 					"Welcome "+myAccount.firstname+" "+myAccount.lastname+
@@ -143,30 +140,9 @@ var x,r,c,s;
 		SendButton(t+" which corresponds to",HotKeys[x][0],HotKeys[x][1]);
 	 else
 		KeyMessage.innerHTML=t;
-		RemoteErr.innerHTML= "";
+		//RemoteErr.innerHTML= "";
 }
 
-function IRsend(protocol, code, bits) {
-	if(protocol==0) return;
-	if(SendingFlag) {RemoteErr.innerText= "Ignoring Command while waiting on return."; return;}
-	SendingFlag=1;
-	RemoteErr.innerText= "Attempting sending..."; 
-	api.rest (
-		{url:"/v1/"+troopid+"/"+scoutid+"/command", 
-		data:{command:"ir.send("+protocol+","+code+","+bits+")"}
-		},
-		function (err,data) {
-			var txt= "";
-			if(err) {
-				txt =err.code+ " message: "+err.message;
-			} else {
-				txt = "Sent:"+ protocol+ ", 0x"+code.toString(16)+ ", "+ bits;
-			}
-			RemoteErr.innerText=txt;
-			SendingFlag=0;
-		}
-	)
-}
 function TranslateSpecial(x) {
 	switch(x) {
 		case 187:s="+"; break; case 189:s="-"; break;
@@ -178,8 +154,7 @@ function TranslateSpecial(x) {
 		case 219:s="["; break; case 221:s="]"; break;
 		case 188:s=","; break; case 190:s="."; break;
 		case 191:s="/"; break; case 120:s="|"; break;
-		case 20:s="ESC"; break;case 220:s="\\"; break;
-		case 0:s="-na-"; break;
+		case 20:s="ESC"; break;
 		default:s= String.fromCharCode(x);
 	}
 	return s;
@@ -206,10 +181,38 @@ function ShowRemote () {
 function DoButton (r,c) {
 	SendButton("You clicked",r,c);
 }
+var myQ= [];
 function SendButton (t,r,c) {
 	var B= Button[r][c];
 	KeyMessage.innerHTML=t+" button("+r+","+c+")='"+B[3]+
 		"'  Protocol:"+ B[0]+"  Code:0x"+B[1].toString(16)+
 		"   Bits:"+B[2];
-	IRsend(B[0],B[1],B[2]);
+	myQ.unshift(B)
+	IRsend();
+}
+function IRsend() {
+	var t="";
+	for(var i=0;i<myQ.length;i++) {
+		t=t+"P:"+myQ[i][0]+" C: 0x"+myQ[i][1]+" B:"+myQ[i][2]+"<br>";
+	}
+	CommandQueue.innerHTML=t;
+	if(myQ.length==0) return;
+	var B=myQ.shift();
+	if(B[0]==0) return;
+	RemoteErr.innerText= "Attempting sending..."; 
+	api.rest (
+		{url:"/v1/"+troopid+"/"+scoutid+"/command", 
+		data:{command:"ir.send("+B[0]+","+B[1]+","+B[2]+")"}
+		},
+		function (err,data) {
+			var txt= "";
+			if(err) {
+				txt =err.code+ " message: "+err.message;
+			} else {
+				txt = "Sent:"+B[0]+ ", 0x"+B[1].toString(16)+ ", "+B[2];
+			}
+			RemoteErr.innerText=txt;
+			IRsend();
+		}
+	)
 }

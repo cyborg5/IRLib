@@ -1,6 +1,5 @@
 IRLib – an Arduino library for infrared encoding and decoding
-
-Version 1.42 May 2014
+Version 1.5 June 2014
 Copyright 2013, 2014 by Chris Young http://cyborg5.com
  
 This library is a major rewrite of IRemote by Ken Shirriff which was covered 
@@ -84,4 +83,4 @@ The library handles the following protocols:
 NEC, Sony, RC5, RC6, Raw all of which were supported in the KS version.
 Additionally added Panasonic_Old, JVC, NECx.
 Also added KS hash code routines which he released separately.
-Example code included but not in the library: Samsung36, DirecTV, GIcable.
+Example code included but not in the library: Samsung36, DirecTV, GIcable. rcmm (U-Verse)

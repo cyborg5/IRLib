@@ -1,5 +1,5 @@
 /* IRLib.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.5   June 2014
+ * Version 1.51   March 2015
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -44,6 +44,12 @@
  * Comment out the following define to eliminate the conflicts.
  */
 #define USE_IRRECV
+/* Similarly some other libraries have conflicts with the built in Arduino functions
+ * "attachInterrupt()" and "detachInterrupt()" which are used by the IRrecvPCI and
+ * IRfrequency classes. If you're not using either of those classes and get conflicts
+ * related to INT0_vect then comment out the following line to eliminate the conflicts.
+ */
+ #define USE_ATTACH_INTERRUPTS
 /* If not using either DumpResults methods of IRdecode nor IRfrequency you can
  * comment out the following define to eliminate considerable program space.
  */
@@ -312,6 +318,7 @@ public:
  * software for Windows PCs. Many thanks to the people at http://analysir.com for their 
  * assistance in developing this section of code.
  */
+#ifdef USE_ATTACH_INTERRUPTS
 class IRrecvPCI: public IRrecvBase
 {
 public:
@@ -350,6 +357,7 @@ private:
   unsigned int i;
   unsigned long Sum;
 };
+#endif // ifdef USE_ATTACH_INTERRUPTS
 
 //Do the actual blinking off and on
 //This is not part of IRrecvBase because it may need to be inside an ISR

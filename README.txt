@@ -1,6 +1,6 @@
 IRLib – an Arduino library for infrared encoding and decoding
-Version 1.5 June 2014
-Copyright 2013, 2014 by Chris Young http://cyborg5.com
+Version 1.51 March 2015 
+Copyright 2013-2015 by Chris Young http://tech.cyborg5.com/irlib/
  
 This library is a major rewrite of IRemote by Ken Shirriff which was covered 
 by GNU LESSER GENERAL PUBLIC LICENSE which as I read it allows me to make 

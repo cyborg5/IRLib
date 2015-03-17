@@ -1,5 +1,5 @@
 /* IRLib.cpp from IRLib - an Arduino library for infrared encoding and decoding
- * Version 1.5   June 2014
+ * Version 1.51   March 2015
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
@@ -763,7 +763,7 @@ bool IRrecvLoop::GetResults(IRdecodeBase *decoder) {
   IRrecvBase::GetResults(decoder);
   return true;
 }
-
+#ifdef USE_ATTACH_INTERRUPTS
 /* This receiver uses the pin change hardware interrupt to detect when your input pin
  * changes state. It gives more detailed results than the 50µs interrupts of IRrecv
  * and theoretically is more accurate than IRrecvLoop. However because it only detects
@@ -914,7 +914,7 @@ void IRfrequency::DumpResults(bool Detail) {
   DumpUnavailable(); 
 #endif
 };
- 
+#endif // ifdef USE_ATTACH_INTERRUPTS
  
 /*
  * The remainder of this file is all related to interrupt handling and hardware issues. It has 

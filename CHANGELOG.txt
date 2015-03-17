@@ -1,6 +1,8 @@
 Change Log for IRLib – an Arduino library for infrared encoding and decoding
-Copyright 2013-2014 by Chris Young http://tech.cyborg5.com/irlib/
+Copyright 2013-2015 by Chris Young http://tech.cyborg5.com/irlib/
 
+Version 1.51 March 2015
+	Added USE_ATTACH_INTERRUPTS define to allow disabling IRrecvPCI and IRfrequency both of which use the built-in "attachInterrupt()" function that can cause conflicts with other ISR routines using INT0_vect.
 Version 1.5 June 2014
 	New bit-bang option for PWM output frequency setting. Now can use any output pin with no hardware timers. Note:bit-bang output not as accurate as timer-based frequency selection.
 	Major rewrite of IRLibTimer.h to facilitate bit-bang. Separated hardware timer selection and specification into sending and receiving sections in order to implement bit-bang.

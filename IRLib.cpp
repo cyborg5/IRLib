@@ -1019,14 +1019,26 @@ void IRrecv::enableIRIn(void) {
   sei();
 }
 
+void IRrecv::disableIRIn(void) {
+  IR_RECV_DISABLE_INTR;
+}
+
 bool IRrecv::GetResults(IRdecodeBase *decoder) {
   if (irparams.rcvstate != STATE_STOP) return false;
   IRrecvBase::GetResults(decoder,USECPERTICK);
   return true;
 }
 
-#define _GAP 5000 // Minimum map between transmissions
-#define GAP_TICKS (_GAP/USECPERTICK)
+unsigned long IRrecv::GAP_TICKS = _GAP/USECPERTICK;
+
+void IRrecv::setEndingTimeout(unsigned long timeOut) {
+    GAP_TICKS = timeOut / USECPERTICK;
+}
+
+unsigned long IRrecv::getEndingTimeout() {
+    return (unsigned long) (GAP_TICKS * USECPERTICK);
+}
+
 /*
  * This interrupt service routine is only used by IRrecv and may or may not be used by other
  * extensions of the IRrecBase. It is timer driven interrupt code to collect raw data.
@@ -1047,7 +1059,7 @@ ISR(IR_RECV_INTR_NAME)
   switch(irparams.rcvstate) {
   case STATE_IDLE: // In the middle of a gap
     if (irdata == IR_MARK) {
-      if (irparams.timer < GAP_TICKS) {
+      if (irparams.timer < IRrecv::GAP_TICKS) {
         // Not big enough to be a gap.
         irparams.timer = 0;
       } 
@@ -1074,11 +1086,13 @@ ISR(IR_RECV_INTR_NAME)
       irparams.rcvstate = STATE_MARK;
     } 
     else { // SPACE
-      if (irparams.timer > GAP_TICKS) {
+      if (irparams.timer > IRrecv::GAP_TICKS) {
         // big SPACE, indicates gap between codes
         // Mark current code as ready for processing
         // Switch to STOP
         // Don't reset timer; keep counting space width
+        irparams.rawbuf[irparams.rawlen++] = irparams.timer;
+        irparams.timer = 0;
         irparams.rcvstate = STATE_STOP;
       } 
     }
@@ -1139,6 +1153,12 @@ void IRsendBase::space(unsigned int time) {
  Extent+=time;
 }
 
+void IRsendBase::No_Output(void) {
+#if defined(IR_SEND_PWM_PIN)
+ pinMode(IR_SEND_PWM_PIN, OUTPUT);
+ digitalWrite(IR_SEND_PWM_PIN, LOW); // When not sending PWM, we want it low
+#endif
+}
 /*
  * Various debugging routines
  */

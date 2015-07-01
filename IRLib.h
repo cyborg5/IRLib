@@ -64,6 +64,8 @@
 
 #define RAWBUF 100 // Length of raw duration buffer (cannot exceed 255)
 
+#define _GAP 5000 // Default timeout value in microseconds
+
 typedef char IRTYPES; //formerly was an enum
 #define UNKNOWN 0
 #define NEC 1
@@ -188,6 +190,7 @@ public:
   void sendGeneric(unsigned long data,  unsigned char Num_Bits, unsigned int Head_Mark, unsigned int Head_Space, 
                    unsigned int Mark_One, unsigned int Mark_Zero, unsigned int Space_One, unsigned int Space_Zero, 
 				   unsigned char kHz, bool Stop_Bits, unsigned long Max_Extent=0);
+  static void No_Output(void);
 protected:
   void enableIROut(unsigned char khz);
   VIRTUAL void mark(unsigned int usec);
@@ -289,7 +292,11 @@ public:
   IRrecv(unsigned char recvpin):IRrecvBase(recvpin){};
   bool GetResults(IRdecodeBase *decoder);
   void enableIRIn(void);
+  void disableIRIn(void);
   void resume(void);
+  static void setEndingTimeout(unsigned long timeOut);
+  static unsigned long getEndingTimeout(void);
+  unsigned static long GAP_TICKS; //must be public & static for the ISR
 };
 #endif
 /* This receiver uses no interrupts or timers. Other interrupt driven receivers

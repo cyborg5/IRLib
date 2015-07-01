@@ -765,7 +765,7 @@ bool IRrecvLoop::GetResults(IRdecodeBase *decoder) {
 }
 #ifdef USE_ATTACH_INTERRUPTS
 /* This receiver uses the pin change hardware interrupt to detect when your input pin
- * changes state. It gives more detailed results than the 50µs interrupts of IRrecv
+ * changes state. It gives more detailed results than the 50us interrupts of IRrecv
  * and theoretically is more accurate than IRrecvLoop. However because it only detects
  * pin changes, it doesn't always know when it's finished. GetResults attempts to detect
  * a long gap of space but sometimes the next signal gets there before GetResults notices.
@@ -1002,7 +1002,7 @@ void do_Blink(void) {
 }
 #ifdef USE_IRRECV
 /*
- * The original IRrecv which uses 50µs timer driven interrupts to sample input pin.
+ * The original IRrecv which uses 50us timer driven interrupts to sample input pin.
  */
 void IRrecv::resume() {
   // initialize state machine variables

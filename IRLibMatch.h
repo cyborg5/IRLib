@@ -1,4 +1,4 @@
-/* IRLibMatch.h from IRLib – an Arduino library for infrared encoding and decoding
+/* IRLibMatch.h from IRLib -- an Arduino library for infrared encoding and decoding
  * Version 1.5   June 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
  *

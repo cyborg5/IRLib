@@ -1,4 +1,4 @@
-/* IRLib.h from IRLib – an Arduino library for infrared encoding and decoding
+/* IRLib.h from IRLib -- an Arduino library for infrared encoding and decoding
  * Version 1.51   March 2015
  * Copyright 2014 by Chris Young http://cyborg5.com
  *
@@ -276,10 +276,10 @@ protected:
   void Init(void);
 };
 
-/* Original IRrecv class uses 50µs interrupts to sample input. While this is generally
+/* Original IRrecv class uses 50us interrupts to sample input. While this is generally
  * accurate enough for everyday purposes, it may be difficult to port to other
  * hardware unless you know a lot about hardware timers and interrupts. Also
- * when trying to analyze unknown protocols, the 50µs granularity may not be sufficient.
+ * when trying to analyze unknown protocols, the 50us granularity may not be sufficient.
  * In that case use either the IRrecvLoop or the IRrecvPCI class.
  */
 #ifdef USE_IRRECV
@@ -309,7 +309,7 @@ public:
 };
 
 /* This receiver uses the pin change hardware interrupt to detect when your input pin
- * changes state. It gives more detailed results than the 50µs interrupts of IRrecv
+ * changes state. It gives more detailed results than the 50us interrupts of IRrecv
  * and theoretically is more accurate than IRrecvLoop. However because it only detects
  * pin changes, it doesn't always know when it's finished. GetResults attempts to detect
  * a long gap of space but sometimes the next signal gets there before GetResults notices.
@@ -365,10 +365,10 @@ private:
 void do_Blink(void);
 
 /* This routine maps interrupt numbers used by attachInterrupt() into pin numbers.
- * NOTE: these interrupt numbers which are passed to “attachInterrupt()” are not 
+ * NOTE: these interrupt numbers which are passed to "attachInterrupt()" are not 
  * necessarily identical to the interrupt numbers in the datasheet of the processor 
  * chip you are using. These interrupt numbers are a system unique to the 
- * “attachInterrupt()” Arduino function.  It is used by both IRrecvPCI and IRfrequency.
+ * "attachInterrupt()" Arduino function.  It is used by both IRrecvPCI and IRfrequency.
  */
 unsigned char Pin_from_Intr(unsigned char inum);
 // Some useful constants

@@ -296,7 +296,10 @@ public:
   void resume(void);
   static void setEndingTimeout(unsigned long timeOut);
   static unsigned long getEndingTimeout(void);
+  static void setBeginningTimeout(unsigned long timeOut);
+  static unsigned long getBeginningTimeout(void);
   unsigned static long GAP_TICKS; //must be public & static for the ISR
+  unsigned static long TIMEOUT_TICKS; //must be public & static for the ISR
 };
 #endif
 /* This receiver uses no interrupts or timers. Other interrupt driven receivers

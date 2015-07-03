@@ -31,6 +31,7 @@
 #include "IRLibMatch.h"
 #include "IRLibRData.h"
 #include <Arduino.h>
+#include <limits.h>
 
 volatile irparams_t irparams;
 /*
@@ -1030,13 +1031,22 @@ bool IRrecv::GetResults(IRdecodeBase *decoder) {
 }
 
 unsigned long IRrecv::GAP_TICKS = _GAP/USECPERTICK;
+unsigned long IRrecv::TIMEOUT_TICKS = ULONG_MAX;
 
 void IRrecv::setEndingTimeout(unsigned long timeOut) {
     GAP_TICKS = timeOut / USECPERTICK;
 }
 
+void IRrecv::setBeginningTimeout(unsigned long timeOut) {
+    TIMEOUT_TICKS = timeOut / USECPERTICK;
+}
+
 unsigned long IRrecv::getEndingTimeout() {
     return (unsigned long) (GAP_TICKS * USECPERTICK);
+}
+
+unsigned long IRrecv::getBeginningTimeout() {
+    return (unsigned long) (TIMEOUT_TICKS * USECPERTICK);
 }
 
 /*
@@ -1069,6 +1079,13 @@ ISR(IR_RECV_INTR_NAME)
         irparams.rawbuf[irparams.rawlen++] = irparams.timer;
         irparams.timer = 0;
         irparams.rcvstate = STATE_MARK;
+      }
+    }
+    else {
+      if (irparams.timer >= IRrecv::TIMEOUT_TICKS) {
+	irparams.rawbuf[irparams.rawlen++] = irparams.timer;
+	irparams.timer = 0;
+        irparams.rcvstate = STATE_STOP;
       }
     }
     break;

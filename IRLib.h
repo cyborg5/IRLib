@@ -66,7 +66,7 @@
 
 #define _GAP 5000 // Default timeout value in microseconds
 
-typedef char IRTYPES; //formerly was an enum
+typedef unsigned char IRTYPES; //formerly was an enum
 #define UNKNOWN 0
 #define NEC 1
 #define SONY 2
@@ -268,6 +268,7 @@ class IRrecvBase
 public:
   IRrecvBase(void) {};
   IRrecvBase(unsigned char recvpin);
+  virtual ~IRrecvBase() {};
   void No_Output(void);
   void blink13(bool blinkflag);
   bool GetResults(IRdecodeBase *decoder, const unsigned int Time_per_Ticks=1);

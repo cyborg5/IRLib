@@ -666,8 +666,8 @@ bool IRdecodeRC6::decode(void) {
  * Converts the raw code values into a 32-bit hash code.
  * Hopefully this code is unique for each button.
  */
-#define FNV_PRIME_32 16777619
-#define FNV_BASIS_32 2166136261
+#define FNV_PRIME_32 16777619UL
+#define FNV_BASIS_32 2166136261UL
 // Compare two tick values, returning 0 if newval is shorter,
 // 1 if newval is equal, and 2 if newval is longer
 int IRdecodeHash::compare(unsigned int oldval, unsigned int newval) {
@@ -753,7 +753,7 @@ bool IRrecvLoop::GetResults(IRdecodeBase *decoder) {
   while(irparams.rawlen<RAWBUF) {  //While the buffer not overflowing
     while(OldState==(NewState=digitalRead(irparams.recvpin))) { //While the pin hasn't changed
       if( (DeltaTime = (EndTime=micros()) - StartTime) > 10000) { //If it's a very long wait
-        if(Finished=irparams.rawlen) break; //finished unless it's the opening gap
+        if((Finished=irparams.rawlen)) break; //finished unless it's the opening gap
       }
     }
     if(Finished) break;
@@ -798,6 +798,9 @@ void IRrecvPCI_Handler(){
       break;
     case STATE_IDLE:
        if(digitalRead(irparams.recvpin)) return; else irparams.rcvstate=STATE_RUNNING;
+       break;
+    default:
+       // do nothing
        break;
   };
   irparams.rawbuf[irparams.rawlen]=DeltaTime;
@@ -925,7 +928,7 @@ void IRfrequency::DumpResults(bool Detail) {
 
 //See IRLib.h comment explaining this function
  unsigned char Pin_from_Intr(unsigned char inum) {
-  const unsigned char PROGMEM attach_to_pin[]= {
+  const unsigned char attach_to_pin[]= {
 #if defined(__AVR_ATmega256RFR2__)//Assume Pinoccio Scout
 	4,5,SCL,SDA,RX1,TX1,7
 #elif defined(__AVR_ATmega32U4__) //Assume Arduino Leonardo
@@ -1118,6 +1121,9 @@ ISR(IR_RECV_INTR_NAME)
     if (irdata == IR_MARK) { // reset gap timer
       irparams.timer = 0;
     }
+    break;
+  default:
+    //nothing
     break;
   }
   do_Blink();

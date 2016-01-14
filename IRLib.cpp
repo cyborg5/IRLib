@@ -39,7 +39,7 @@ volatile irparams_t irparams;
 const __FlashStringHelper *Pnames(IRTYPES Type) {
   if(Type>LAST_PROTOCOL) Type=UNKNOWN;
   // You can add additional strings before the entry for hash code.
-  const __FlashStringHelper *Names[LAST_PROTOCOL+1]={F("Unknown"),F("NEC"),F("Sony"),F("RC5"),F("RC6"),F("Panasonic Old"),F("JVC"),F("NECx"),F("Hash Code")};
+  const __FlashStringHelper *Names[LAST_PROTOCOL+1]={F("Unknown"),F("NEC"),F("Sony"),F("RC5"),F("RC6"),F("Panasonic Old"),F("JVC"),F("NECx"),F("Panasonic"),F("Hash Code")};
   return Names[Type];
 };
 
@@ -129,6 +129,47 @@ void IRsendNECx::send(unsigned long data)
 void IRsendPanasonic_Old::send(unsigned long data)
 {
   sendGeneric(data,22, 833*4, 833*4, 833, 833, 833*3, 833,57, true);
+};
+
+void IRsendPanasonic::PutBits (unsigned long data, int nbits){
+   for (int i = 0; i < nbits; i++) {
+      if (data & 0x80000000) {
+        mark(432);  space(1296);
+      } else {
+        mark(432);  space(432);
+      };
+      data <<= 1;
+   }
+}
+
+void IRsendPanasonic::send(unsigned long data) {
+   // Enable IR out at 37kHz
+   enableIROut(37);
+
+   // Send the header
+   mark(3456); space(1728);
+
+   // Send Panasonic identifier
+   PutBits (2,8);
+   PutBits (32,8);
+
+   // Send the device, sub-device and function
+   PutBits (data, 24);//Send 12 bits
+
+   // Send the checksum
+   int checksum = 0;
+   while (data > 0) {
+     checksum = checksum ^ (data & 0xFF);
+     data >>= 8;
+   }
+   PutBits (checksum, 8);
+
+   // Send the stop bit
+   mark(432);
+
+   // Lead out is 173 times the base time 432
+   // The U makes sure the compiler doesn't freak out about it being a possible overflow
+   space(172U*432U);
 };
 
 /*
@@ -240,6 +281,7 @@ void IRsend::send(IRTYPES Type, unsigned long data, unsigned int data2) {
     case PANASONIC_OLD: IRsendPanasonic_Old::send(data); break;
     case NECX:          IRsendNECx::send(data); break;    
     case JVC:           IRsendJVC::send(data,(bool)data2); break;
+    case PANASONIC_NEW: IRsendPanasonic::send(data); break;
   //case ADDITIONAL:    IRsendADDITIONAL::send(data); break;//add additional protocols here
 	//You should comment out protocols you will likely never use and/or add extra protocols here
   }
@@ -422,6 +464,7 @@ bool IRdecode::decode(void) {
   if (IRdecodePanasonic_Old::decode()) return true;
   if (IRdecodeNECx::decode()) return true;
   if (IRdecodeJVC::decode()) return true;
+  if (IRdecodePanasonic::decode()) return true;
 //if (IRdecodeADDITIONAL::decode()) return true;//add additional protocols here
 //Deliberately did not add hash code decoding. If you get decode_type==UNKNOWN and
 // you want to know a hash code you can call IRhash::decode() yourself.
@@ -496,6 +539,41 @@ bool IRdecodePanasonic_Old::decode(void) {
   decode_type = PANASONIC_OLD;
   return true;
 }
+
+bool IRdecodePanasonic::GetBit(void) {
+  if (!MATCH(rawbuf[offset],432)) return DATA_MARK_ERROR(432);
+  offset++;
+  if (MATCH(rawbuf[offset],1296)) 
+    data = (data << 1) | 1;
+  else if (MATCH(rawbuf[offset],432)) 
+    data <<= 1;
+  else return DATA_SPACE_ERROR(1296);
+  offset++;
+  return true;
+};
+
+bool IRdecodePanasonic::decode(void) {
+  IRLIB_ATTEMPT_MESSAGE(F("Panasonic"));
+  if (rawlen != 100) return RAW_COUNT_ERROR;
+
+  // This handles the lead-in or header
+  if (!MATCH(rawbuf[1],3456))  return HEADER_MARK_ERROR(3456);
+  if (!MATCH(rawbuf[2],1728)) return HEADER_SPACE_ERROR(1728);
+  offset=3;
+ 
+  // Grab the next two bytes and see if they match 0x4004 which will confirm this is a Panasonic code 
+  data = 0;
+  while (offset < 2*8*2+2) if (!GetBit()) return false;
+  // Check if this is 0100000000000100 or 0x4004 in hex
+  if (data != 0x4004) return IRLIB_DATA_ERROR_MESSAGE(F("Error identifying Panasonic"),offset,rawbuf[offset],0x4004);
+
+  // save the next 24 bits to value
+  while(offset < 5*8*2+2) if (!GetBit()) return false;
+  value = data; data = 0;
+
+  decode_type = PANASONIC_NEW;
+  return true;
+};
 
 bool IRdecodeNECx::decode(void) {
   IRLIB_ATTEMPT_MESSAGE(F("NECx"));  

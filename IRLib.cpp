@@ -149,16 +149,17 @@ void IRsendPanasonic::send(unsigned long data) {
    // Send the header
    mark(3456); space(1728);
 
-   // Send Panasonic identifier
-   PutBits (2,8);
-   PutBits (32,8);
+   // Send the data (Panasonic identifier (16 bits), device (8 bits), sub-device (8 bits) and function (8 bits)
+   PutBits (data, 40); 
 
-   // Send the device, sub-device and function
-   PutBits (data, 24);//Send 12 bits
+   // Remove first 16 bits for Panasonic id
+   data << 16;
 
    // Send the checksum
    int checksum = 0;
    while (data > 0) {
+     // doesn't matter which direction we shift because XOR doesn't care
+     // we just have to pick a side and stick with it
      checksum = checksum ^ (data & 0xFF);
      data >>= 8;
    }

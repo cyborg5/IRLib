@@ -131,12 +131,20 @@ void IRsendPanasonic_Old::send(unsigned long data)
   sendGeneric(data,22, 833*4, 833*4, 833, 833, 833*3, 833,57, true);
 };
 
+#define PANASONIC_HDR_MARK 3456
+#define PANASONIC_HDR_SPACE 1728
+#define PANASONIC_BIT_MARK 325
+#define PANASONIC_ONE_SPACE 1400
+#define PANASONIC_ZERO_SPACE 500
+
 void IRsendPanasonic::PutBits (unsigned long data, int nbits){
+   unsigned long bitmask = 1;
+   bitmask <<= nbits - 1;
    for (int i = 0; i < nbits; i++) {
-      if (data & 0x80000000) {
-        mark(432);  space(1296);
+      if (data & bitmask) {
+        mark(PANASONIC_BIT_MARK);  space(PANASONIC_ONE_SPACE);
       } else {
-        mark(432);  space(432);
+        mark(PANASONIC_BIT_MARK);  space(PANASONIC_ZERO_SPACE);
       };
       data <<= 1;
    }
@@ -147,13 +155,13 @@ void IRsendPanasonic::send(unsigned long data) {
    enableIROut(37);
 
    // Send the header
-   mark(3456); space(1728);
+   mark(PANASONIC_HDR_MARK); space(PANASONIC_HDR_SPACE);
 
-   // Send the data (Panasonic identifier (16 bits), device (8 bits), sub-device (8 bits) and function (8 bits)
-   PutBits (data, 40); 
+   // Send the Panasonic identifier
+   PutBits (0x4004, 16);
 
-   // Remove first 16 bits for Panasonic id
-   data << 16;
+   // Send the data device (8 bits), sub-device (8 bits) and function (8 bits)
+   PutBits (data, 24); 
 
    // Send the checksum
    int checksum = 0;
@@ -166,11 +174,11 @@ void IRsendPanasonic::send(unsigned long data) {
    PutBits (checksum, 8);
 
    // Send the stop bit
-   mark(432);
+   mark(PANASONIC_BIT_MARK);
 
    // Lead out is 173 times the base time 432
    // The U makes sure the compiler doesn't freak out about it being a possible overflow
-   space(172U*432U);
+   space(172U*PANASONIC_BIT_MARK);
 };
 
 /*
@@ -542,13 +550,15 @@ bool IRdecodePanasonic_Old::decode(void) {
 }
 
 bool IRdecodePanasonic::GetBit(void) {
-  if (!MATCH(rawbuf[offset],432)) return DATA_MARK_ERROR(432);
+  if (!MATCH(rawbuf[offset],PANASONIC_BIT_MARK)) return DATA_MARK_ERROR(PANASONIC_BIT_MARK);
   offset++;
-  if (MATCH(rawbuf[offset],1296)) 
+  if (MATCH(rawbuf[offset],PANASONIC_ONE_SPACE)) {
     data = (data << 1) | 1;
-  else if (MATCH(rawbuf[offset],432)) 
+  } else if (MATCH(rawbuf[offset],PANASONIC_ZERO_SPACE)) {
     data <<= 1;
-  else return DATA_SPACE_ERROR(1296);
+  } else {
+    return DATA_SPACE_ERROR(PANASONIC_ONE_SPACE);
+  }
   offset++;
   return true;
 };
@@ -558,18 +568,19 @@ bool IRdecodePanasonic::decode(void) {
   if (rawlen != 100) return RAW_COUNT_ERROR;
 
   // This handles the lead-in or header
-  if (!MATCH(rawbuf[1],3456))  return HEADER_MARK_ERROR(3456);
-  if (!MATCH(rawbuf[2],1728)) return HEADER_SPACE_ERROR(1728);
+  if (!MATCH(rawbuf[1],PANASONIC_HDR_MARK))  return HEADER_MARK_ERROR(PANASONIC_HDR_MARK);
+  if (!MATCH(rawbuf[2],PANASONIC_HDR_SPACE)) return IRLIB_DATA_ERROR_MESSAGE(F("Header space incorrect"), 2, rawbuf[2], PANASONIC_HDR_SPACE);
   offset=3;
  
   // Grab the next two bytes and see if they match 0x4004 which will confirm this is a Panasonic code 
   data = 0;
-  while (offset < 2*8*2+2) if (!GetBit()) return false;
+  while (offset < 2*2*8+2) if (!GetBit()) return false;
   // Check if this is 0100000000000100 or 0x4004 in hex
-  if (data != 0x4004) return IRLIB_DATA_ERROR_MESSAGE(F("Error identifying Panasonic"),offset,rawbuf[offset],0x4004);
+  if (data != 0x4004) return IRLIB_DATA_ERROR_MESSAGE(F("Error identifying Panasonic"),offset,data,0x4004);
+  data = 0;
 
   // save the next 24 bits to value
-  while(offset < 5*8*2+2) if (!GetBit()) return false;
+  while(offset < 5*2*8+2) if (!GetBit()) return false;
   value = data; data = 0;
 
   decode_type = PANASONIC_NEW;

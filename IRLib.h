@@ -36,7 +36,7 @@
 // If IRLIB_TRACE is defined, some debugging information about the decode will be printed
 // IRLIB_TEST must be defined for the IRtest unittests to work.  It will make some
 // methods virtual, which will be slightly slower, which is why it is optional.
-#define IRLIB_TRACE
+//#define IRLIB_TRACE
 // #define IRLIB_TEST
 
 /* If not using the IRrecv class but only using IRrecvPCI or IRrecvLoop you can eliminate

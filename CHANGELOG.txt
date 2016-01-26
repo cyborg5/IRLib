@@ -1,6 +1,8 @@
 Change Log for IRLib – an Arduino library for infrared encoding and decoding
 Copyright 2013-2015 by Chris Young http://tech.cyborg5.com/irlib/
 
+Version 1.52 26 January 2016
+  By Gabriel Staples (www.ElectricRCAircraftGuy.com): fixed bug inside IRrecvPCI::GetResults, which prevented the pin change (external interrupt) technique from properly receiving IR values consistently. Added new example to demonstrate IRrecvPCI. Implemented atomic access guards for reading/writing volatile variables outside ISRs, using the ATOMIC_BLOCK(ATOMIC_RESTORESTATE) macro, in order to prevent data corruption when accessing multi-byte volatile variables. Added comments throughout code for additional clarity. Changed input pin from INPUT to INPUT_PULLUP. Made Mark_Excess a 2-byte signed value to allow negatives, since some IR receivers (ex: dirt cheap 1838 ones for <$1 for 10 on Ebay) actually need a slightly *negative* Mark_Excess value, since they filter in such a way that *spaces* (output HIGH on the receiver) are slightly longer than marks (output LOW on the receiver), which is opposite the norm.
 Version 1.51 March 2015
 	Added USE_ATTACH_INTERRUPTS define to allow disabling IRrecvPCI and IRfrequency both of which use the built-in "attachInterrupt()" function that can cause conflicts with other ISR routines using INT0_vect.
 Version 1.5 June 2014

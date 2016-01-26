@@ -31,8 +31,9 @@
 #include "IRLibMatch.h"
 #include "IRLibRData.h"
 #include <Arduino.h>
+#include <util/atomic.h> //for ATOMIC_BLOCK macro (source: http://www.nongnu.org/avr-libc/user-manual/group__util__atomic.html)
 
-volatile irparams_t irparams;
+volatile irparams_t irparams; //MUST be volatile since it is used both inside and outside ISRs
 /*
  * Returns a pointer to a flash stored string that is the name of the protocol received. 
  */
@@ -262,13 +263,14 @@ IRdecodeBase::IRdecodeBase(void) {
 };
 
 /*
- * Normally the decoder uses irparams.rawbuf but if you want to resume receiving while
+ * Use External Buffer:
+ * NB: Normally the decoder uses irparams.rawbuf but if you want to resume receiving while
  * still decoding you can define a separate buffer and pass the address here. 
  * Then IRrecvBase::GetResults will copy the raw values from its buffer to yours allowing you to
- * call IRrecvBase::resume immediately before you call decode.
+ * call IRrecvBase::resume immediately before you call decode. See IRrecvBase::GetResults for more info.
  */
 void IRdecodeBase::UseExtnBuf(void *P){
-  rawbuf=(volatile unsigned int*)P;
+  rawbuf=(unsigned int*)P; //volatile not necessary here; if using an external buffer, the external buffer's contents are not volatile, since they are not modified directly by any ISR
 };
 
 /*
@@ -276,8 +278,12 @@ void IRdecodeBase::UseExtnBuf(void *P){
  * for usage.
  */
 void IRdecodeBase::copyBuf (IRdecodeBase *source){
-   memcpy((void *)rawbuf,(const void *)source->rawbuf,sizeof(irparams.rawbuf));
-   rawlen=source->rawlen;
+  //ensure atomic access in case you are NOT using an external buffer, in which case rawbuf is volatile 
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+  {
+    memcpy((void *)rawbuf,(const void *)source->rawbuf,sizeof(irparams.rawbuf));
+  }
+  rawlen=source->rawlen;
 };
 
 /*
@@ -691,7 +697,7 @@ bool IRdecodeHash::decode(void) {
  */
 IRrecvBase::IRrecvBase(unsigned char recvpin)
 {
-  irparams.recvpin = recvpin;
+  irparams.recvpin = recvpin; //note: irparams.recvpin is atomically safe since it cannot be modified after object creation 
   Init();
 }
 void IRrecvBase::Init(void) {
@@ -712,27 +718,39 @@ unsigned char IRrecvBase::getPinNum(void){
  */
 bool IRrecvBase::GetResults(IRdecodeBase *decoder, const unsigned int Time_per_Tick) {
   decoder->Reset();//clear out any old values.
-  decoder->rawlen = irparams.rawlen;
 /* Typically IR receivers over-report the length of a mark and under-report the length of a space.
  * This routine adjusts for that by subtracting Mark_Excess from recorded marks and
- * deleting it from a recorded spaces. The amount of adjustment used to be defined in IRLibMatch.h.
+ * adding it to recorded spaces. The amount of adjustment used to be defined in IRLibMatch.h.
  * It is now user adjustable with the old default of 100;
- * By copying the the values from irparams to decoder we can call IRrecvBase::resume 
- * immediately while decoding is still in progress.
+ * NB: By copying the the values from irparams to decoder we can call IRrecvBase::resume 
+ * immediately while decoding is still in progress, IF AND ONLY IF you are using an external buffer. 
+ * See the function "IRdecodeBase::UseExtnBuf" for more info. If you are not using an external buffer,
+ * you must wait until decoding is complete before resuming, or else you risk over-writing the very data
+ * you are trying to decode.
  */
-  for(unsigned char i=0; i<irparams.rawlen; i++) {
-    decoder->rawbuf[i]=irparams.rawbuf[i]*Time_per_Tick + ( (i % 2)? -Mark_Excess:Mark_Excess);
+  //ensure atomic access to volatile variables; irparams is volatile  
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+  {
+    decoder->rawlen = irparams.rawlen;
+    for(unsigned char i=0; i<irparams.rawlen; i++) {
+      //Note: even indices are marks, odd indices are spaces. Subtract Mark_Exces from marks and add it to spaces.
+      decoder->rawbuf[i]=irparams.rawbuf[i]*Time_per_Tick + ( (i % 2)? -Mark_Excess:Mark_Excess);
+    }
   }
   return true;
 }
 
 void IRrecvBase::enableIRIn(void) { 
-  pinMode(irparams.recvpin, INPUT);
+  pinMode(irparams.recvpin, INPUT_PULLUP); //many IR receiver datasheets recommend a >10~20K pullup resistor from the output line to 5V; using INPUT_PULLUP does just that
   resume();
 }
 
 void IRrecvBase::resume() {
-  irparams.rawlen = 0;
+  //ensure atomic access to volatile variables 
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+  {
+    irparams.rawlen = 0;
+  }
 }
 
 /* This receiver uses no interrupts or timers. Other interrupt driven receivers
@@ -779,10 +797,11 @@ IRrecvPCI::IRrecvPCI(unsigned char inum) {
   Init();
   intrnum=inum;
   irparams.recvpin=Pin_from_Intr(inum);
+}
 
-  }
-void IRrecvPCI_Handler(){ 
-  unsigned long volatile ChangeTime=micros();
+//Pin Change Interrupt handler/ISR 
+void IRrecvPCI_Handler(){
+  unsigned long ChangeTime=micros();
   unsigned long DeltaTime=ChangeTime-irparams.timer;
   switch(irparams.rcvstate) {
     case STATE_STOP: return;
@@ -809,32 +828,50 @@ void IRrecvPCI_Handler(){
 }
 
 void IRrecvPCI::resume(void) {
+  //atomic access to irparams is already enforced since Interrupt is not attached 
   irparams.rcvstate = STATE_IDLE;
   IRrecvBase::resume();
   irparams.timer=micros();
   attachInterrupt(intrnum, IRrecvPCI_Handler, CHANGE);
 };
 
-bool IRrecvPCI::GetResults(IRdecodeBase *decoder) {
-  if(irparams.rcvstate==STATE_RUNNING) {
-    unsigned long ChangeTime=irparams.timer;
-    if( (micros()-ChangeTime) > 10000) {
-      irparams.rcvstate=STATE_STOP;
-      //Setting gap to 2 is a flag to let you know why we stopped For debugging purposes
-      //irparams.rawbuf[0]=2;
+//returns true if data is received & ready to be decoded, false otherwise 
+//Function Updated/bug fixed by Gabriel Staples (www.ElectricRCAircraftGuy.com) on 26 Jan 2016
+bool IRrecvPCI::GetResults(IRdecodeBase *decoder) 
+{
+  bool resultsJustIn = false;
+  static rcvstate_t lastRcvState = STATE_RUNNING;
+  rcvstate_t currentRcvState;
+  
+  //ensure atomic access to volatile variables; irparams is volatile 
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+  {
+    if(irparams.rcvstate==STATE_RUNNING) {
+      unsigned long ChangeTime=irparams.timer;
+      if((micros()-ChangeTime) > 10000) {
+        irparams.rcvstate=STATE_STOP;
+        //Setting gap to 2 is a flag to let you know why we stopped For debugging purposes
+        //irparams.rawbuf[0]=2;
+      }
     }
+    currentRcvState = irparams.rcvstate;
   }
-  if (irparams.rcvstate != STATE_STOP) return false;
-  detachInterrupt(intrnum);
-  IRrecvBase::GetResults(decoder);
-  return true;
+  if (currentRcvState==STATE_STOP && lastRcvState!=STATE_STOP) //new data just in 
+  {
+    detachInterrupt(intrnum);
+    resultsJustIn = true;
+    IRrecvBase::GetResults(decoder); //mandatory to call when resultsJustIn==true; copy volatile data into decoder, among other things 
+  }
+  lastRcvState = currentRcvState; //update 
+  return resultsJustIn;
 };
 
  /* This class facilitates detection of frequency of an IR signal. Requires a TSMP58000
  * or equivalent device connected to the hardware interrupt pin.
  * Create an instance of the object passing the interrupt number.
  */
-volatile unsigned FREQUENCY_BUFFER_TYPE *IRfreqTimes;
+//These variables MUST be volatile since they are used both in and outside ISRs
+volatile unsigned FREQUENCY_BUFFER_TYPE *IRfreqTimes; //non-volatile pointer to volatile data (http://www.barrgroup.com/Embedded-Systems/How-To/C-Volatile-Keyword)
 volatile unsigned char IRfreqCount;
 IRfrequency::IRfrequency(unsigned char inum) {  //Note this is interrupt number, not pin number
   intrnum=inum;
@@ -842,7 +879,7 @@ IRfrequency::IRfrequency(unsigned char inum) {  //Note this is interrupt number,
   //ISR cannot be passed parameters. If I declare the buffer global it would
   //always eat RAN even if this object was not declared. So we make global pointer
   //and copy the address to it. ISR still puts data in the object.
-  IRfreqTimes= & (Time_Stamp[0]);
+  IRfreqTimes = &(Time_Stamp[0]);
 };
 
 // Note ISR handler cannot be part of a class/object
@@ -852,9 +889,13 @@ void IRfreqISR(void) {
 
 void IRfrequency::enableFreqDetect(void){
   attachInterrupt(intrnum,IRfreqISR, FALLING);
-  for(i=0; i<256; i++) Time_Stamp[i]=0;
-  IRfreqCount=0;
-  Results= 0.0;
+  //ensure atomic access to volatile variables 
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+  {
+    for(i=0; i<256; i++) Time_Stamp[i]=0; //Time_Stamp is volatile
+    IRfreqCount=0; //volatile variable 
+  }
+  Results=0.0;
   Samples=0;
 };
 /* Test to see if we have collected at least one full buffer of data.
@@ -865,25 +906,39 @@ void IRfrequency::enableFreqDetect(void){
  * we had not yet collected data.
  */
 bool IRfrequency::HaveData(void) {
-  return (Time_Stamp[255] || Time_Stamp[254]);
+  bool dataIsReceived;
+  //ensure atomic access to volatile variables 
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+  {
+    dataIsReceived = Time_Stamp[255] || Time_Stamp[254];
+  }
+  return dataIsReceived;
 };
 
 void IRfrequency::disableFreqDetect(void){
   detachInterrupt(intrnum);
  };
 
+//compute the incoming frequency in kHz and store into public variable IRfrequency.Results
 void IRfrequency::ComputeFreq(void){
-   Samples=0; Sum=0;
-   for(i=1; i<256; i++) {
-     unsigned char Interval=Time_Stamp[i]-Time_Stamp[i-1];
-	 if(Interval>50 || Interval<10) continue;//ignore extraneous results
-	 Sum+=Interval;//accumulate usable intervals
-	 Samples++;    //account usable intervals
-   };
-   if(Sum)
-     Results=(double) Samples/(double)Sum*1000;
-   else
-     Results= 0.0;
+  Samples=0; Sum=0;
+  for(i=1; i<256; i++) {
+    unsigned char Interval;
+    //ensure atomic access to volatile variables; Time_Stamp is volatile here
+    //UNNECESSARY HERE: Interval is a single byte and is therefore already atomic 
+    // ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    // {
+      Interval=Time_Stamp[i]-Time_Stamp[i-1];
+    // }
+    if(Interval>50 || Interval<10) continue;//ignore extraneous results where freq is outside the 20~100kHz range
+                                            //Note: 1/50us = 20kHz; 1/10us = 100khz
+    Sum+=Interval;//accumulate usable intervals
+    Samples++;    //account usable intervals
+  };
+  if(Sum)
+    Results=(double)Samples/(double)Sum*1000; //kHz
+  else
+    Results= 0.0;
  };
  
 //Didn't need to be a method that we made one following example of IRrecvBase
@@ -902,7 +957,12 @@ void IRfrequency::DumpResults(bool Detail) {
   Serial.println(F(")"));
   if(Detail) {
     for(i=1; i<256; i++) {
-      unsigned int Interval=Time_Stamp[i]-Time_Stamp[i-1];
+      unsigned int Interval;
+      //ensure atomic access to volatile variables; Time_Stamp is volatile 
+      ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+      {
+        Interval=Time_Stamp[i]-Time_Stamp[i-1];
+      }
       Serial.print(Interval,DEC); Serial.print("\t");
       if ((i % 4)==0)Serial.print(F("\t "));
       if ((i % 8)==0)Serial.println();
@@ -982,6 +1042,7 @@ void IRrecvBase::No_Output (void) {
 // enable/disable blinking of pin 13 on IR processing
 void IRrecvBase::blink13(bool blinkflag)
 {
+  //atomic access guards not required since irparams.blinkflag is a single byte
   irparams.blinkflag = blinkflag;
   if (blinkflag)
      pinMode(BLINKLED, OUTPUT);
@@ -991,6 +1052,7 @@ void IRrecvBase::blink13(bool blinkflag)
 //This is not part of IRrecvBase because it may need to be inside an ISR
 //and we cannot pass parameters to them.
 void do_Blink(void) {
+  //atomic access guards not required since both irparams.blinkflag and irparams.rawlen are single bytes, and hence, already atomic; also, if this method is called within an ISR, of course it is atomic, as interrupts are by default disabled inside ISRs.
   if (irparams.blinkflag) {
     if(irparams.rawlen % 2) {
       BLINKLED_ON();  // turn pin 13 LED on
@@ -1000,13 +1062,22 @@ void do_Blink(void) {
     }
   }
 }
+
+/* If not using the IRrecv class but only using IRrecvPCI or IRrecvLoop you can eliminate
+ * some timer conflicts with the duplicate definition of ISR by turning off USE_IRRECV.
+ * To do this, simply go to IRLib.h and comment out "#define USE_IRRECV". 
+ */
 #ifdef USE_IRRECV
 /*
  * The original IRrecv which uses 50µs timer driven interrupts to sample input pin.
  */
 void IRrecv::resume() {
   // initialize state machine variables
-  irparams.rcvstate = STATE_IDLE;
+  //ensure atomic access to volatile variables 
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+  {
+    irparams.rcvstate = STATE_IDLE;
+  }
   IRrecvBase::resume();
 }
 
@@ -1020,7 +1091,14 @@ void IRrecv::enableIRIn(void) {
 }
 
 bool IRrecv::GetResults(IRdecodeBase *decoder) {
-  if (irparams.rcvstate != STATE_STOP) return false;
+  rcvstate_t rcvstate;
+  //ensure atomic access to volatile variables 
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+  {
+    rcvstate = irparams.rcvstate;
+  } 
+  if (rcvstate != STATE_STOP) return false;
+  //else:
   IRrecvBase::GetResults(decoder,USECPERTICK);
   return true;
 }

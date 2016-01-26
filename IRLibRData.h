@@ -40,7 +40,8 @@
 
 // receiver states
 enum rcvstate_t {STATE_UNKNOWN, STATE_IDLE, STATE_MARK, STATE_SPACE, STATE_STOP, STATE_RUNNING};
-// information for the interrupt handler
+
+// information for the interrupt handlers (ISRs)
 typedef struct {
   unsigned char recvpin;    // pin for IR data from detector
   rcvstate_t rcvstate;       // state machine

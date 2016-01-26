@@ -1,16 +1,23 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.52   January 2016
- * Copyright 2014 by Chris Young http://cyborg5.com
- * Sligth mods, & notes on Mark_Excess, external buffer, etc, added by Gabriel Staples (www.ElectricRCAircraftGuy.com) on 26 Jan 2016 
+ * Version 1.52, January 2016
+ * Library Copyright 2014-2016 by Chris Young http://cyborg5.com
+ * This example written by Gabriel Staples (www.ElectricRCAircraftGuy.com), Copyright 2016, after fixing a bug in IRrecvPCI code
+ * 
  * Based on original example sketch for IRremuote library 
  * Version 0.11 September, 2009
  * Copyright 2009 Ken Shirriff
  * http://www.righto.com/
  */
+ 
 /*
- * IRLib: IRrecvDump - dump details of IR codes with IRrecv
- * An IR detector/demodulator must be connected to the input RECV_PIN.
- *
+ * IRLib: IRrecvPCIDump - dump details of IR codes with IRrecvPCI
+ * -The advantage of using IRrecvPCI instead of IRrecv is that is REQUIRES NO TIMERS TO RECEIVE!!!
+ * -TO STOP USING TIMERS: If you are *only* receiving IR data, and not sending IR data, you can 
+ *  completely free your timer that this library would otherwise use by going to IRLib.h and 
+ *  commenting out the line that says "#define USE_IRRECV". 
+ * Circuit:
+ * An IR detector/demodulator must be connected to the proper External Interrupt pin in use, based on your particular Arduino; see here: https://www.arduino.cc/en/Reference/AttachInterrupt
+ * 
  * Notes on Mark_Excess:
  * Try different values here for Mark_Excess. 50us is a good starting guess. Ken Shirriff originally used 100us. 
  * It is assumed that your IR receiver filters the modulated signal such that marks are several 
@@ -23,9 +30,12 @@
 
 #include <IRLib.h>
 
-int RECV_PIN = 11;
+//specify External Interrupt number (which corresponds to an input pin)
+//Ex: for Arduino Uno/Duemilanove/Nano/Pro Mini, etc (ATmega328), External Interrupt 0 is Pin 2, External Interrupt 1 is Pin 3
+//-for more boards see here: https://www.arduino.cc/en/Reference/AttachInterrupt
+const byte EXT_INTERRUPT_NUMBER = 0; //Pin 2 for ATmega328-based boards, like the Uno
 
-IRrecv My_Receiver(RECV_PIN);
+IRrecvPCI My_Receiver(EXT_INTERRUPT_NUMBER);
 
 IRdecode My_Decoder;
 unsigned int Buffer[RAWBUF]; //NB: you MUST use this external buffer if you want to resume the receiver before 
@@ -34,7 +44,8 @@ unsigned int Buffer[RAWBUF]; //NB: you MUST use this external buffer if you want
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
+  Serial.println(F("begin"));
   delay(2000);while(!Serial);//delay for Leonardo
   My_Decoder.UseExtnBuf(Buffer);
   //Try different values here for Mark_Excess. 50us is a good starting guess. See detailed notes above for more info.
@@ -48,7 +59,13 @@ void loop() {
     //NB: you are ONLY allowed to resume before decoding if you are using an external buffer. See note above.
     My_Receiver.resume(); 
     My_Decoder.decode();
+    
+    //FOR BASIC OUTPUT ONLY:
+    // Serial.println(My_Decoder.bits);
+    // Serial.println(My_Decoder.value,HEX);
+    // Serial.println();
+    
+    //FOR EXTENSIVE OUTPUT:
     My_Decoder.DumpResults();
   }
 }
-

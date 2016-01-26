@@ -271,7 +271,7 @@ public:
   void enableIRIn(void);
   virtual void resume(void);
   unsigned char getPinNum(void);
-  unsigned char Mark_Excess;
+  int16_t Mark_Excess;
 protected:
   void Init(void);
 };
@@ -344,7 +344,7 @@ public:
   //Note this is interrupt number, not pin number
   IRfrequency(unsigned char inum);
   void enableFreqDetect(void);
-  bool HaveData(void);      //detective data received
+  bool HaveData(void);      //detect if data is received
   void disableFreqDetect(void);
   void ComputeFreq(void);	//computes but does not print results
   void DumpResults(bool Detail);	//computes and prints result
@@ -352,7 +352,7 @@ public:
   double Results; //results in kHz
   unsigned char Samples; //number of samples used in computation
 private:
-  volatile unsigned FREQUENCY_BUFFER_TYPE Time_Stamp[256];
+  volatile unsigned FREQUENCY_BUFFER_TYPE Time_Stamp[256]; //MUST be volatile because used both in and outside ISRs
   unsigned char intrnum, pin;
   unsigned int i;
   unsigned long Sum;

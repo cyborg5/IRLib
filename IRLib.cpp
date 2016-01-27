@@ -809,7 +809,7 @@ IRrecvPCI::IRrecvPCI(unsigned char inum, uint16_t *primaryBufferIn) {
 //---------------------------------------------------------------------------------------
 //checkForEndOfIRCode
 //By Gabriel Staples (www.ElectricRCAircraftGuy.com) on 27 Jan 2016
-//-a global function for use inside and outside an ISR
+//-a global function for use inside and outside an ISR, by IRrecvPCI 
 //-this is a non-reentrant function, since it contains static variables & is shared with an ISR, so 
 // whenever you call it from outside an ISR, ***put atomic guards around the whole function call, AND
 // around the portion of code just before that, where dt is determined.*** See IRrecvPCI::GetResults 
@@ -827,7 +827,7 @@ IRrecvPCI::IRrecvPCI(unsigned char inum, uint16_t *primaryBufferIn) {
 bool checkForEndOfIRCode(bool pinState, unsigned long dt, byte whoIsCalling)
 {
   //local variables 
-  static bool dataStateIsReady_old = false; //the previous data state last time this function was called; initialize to false 
+  static bool dataStateIsReady_old = true; //the previous data state last time this function was called; initialize to true
   bool dataStateIsReady; 
   bool dataStateChangedToReady = false;
 

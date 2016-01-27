@@ -704,7 +704,7 @@ IRrecvBase::IRrecvBase(unsigned char recvpin)
   Init();
 }
 void IRrecvBase::Init(void) {
-  irparams.blinkflag = 0;
+  irparams.LEDblinkActive = false;
   Mark_Excess=100;
 }
 
@@ -780,7 +780,7 @@ bool IRrecvLoop::GetResults(IRdecodeBase *decoder) {
       }
     }
     if(Finished) break;
-	do_Blink();
+	do_Blink(!NewState);
     irparams.rawbuf[irparams.rawlen++]=DeltaTime;
     OldState=NewState;StartTime=EndTime;
   };
@@ -897,6 +897,9 @@ void IRrecvPCI_Handler()
   unsigned long t_now = micros(); //us; time stamp this edge
   bool pinState = digitalRead(irparams.recvpin);
   unsigned long t_old = irparams.timer; //us; time stamp last edge (previous time stamp)
+  
+  //blink LED 
+  do_Blink(!pinState);
   
   //check time elapsed 
   unsigned long dt = t_now - t_old; //us; time elapsed ("delta time")
@@ -1131,28 +1134,40 @@ void IRrecvBase::No_Output (void) {
 #endif
 }
 
-// enable/disable blinking of pin 13 on IR processing
-void IRrecvBase::blink13(bool blinkflag)
+//enable/disable blinking of any arbitrary LED pin whenever IR data comes in 
+void IRrecvBase::setBlinkLED(uint8_t pinNum, bool blinkActive)
 {
-  //atomic access guards not required since irparams.blinkflag is a single byte
-  irparams.blinkflag = blinkflag;
-  if (blinkflag)
-     pinMode(BLINKLED, OUTPUT);
+  //atomic access guards not required since these LED parameters are all single bytes 
+  //These masks, ports, etc, will be used for auto-mapped direct port access to blink the LED 
+  //-this is *much* faster than digitalWrite 
+  irparams.LEDpinNum = pinNum;
+  irparams.LEDbitMask = digitalPinToBitMask(pinNum);
+  irparams.LEDp_PORT_out = portOutputRegister(digitalPinToPort(pinNum));
+  irparams.LEDblinkActive = blinkActive;
+  if (blinkActive)
+     pinMode(irparams.LEDpinNum,OUTPUT);
+  else //LEDblinkActive==false 
+  {
+    pinMode(irparams.LEDpinNum,INPUT);
+    fastDigitalWrite(irparams.LEDp_PORT_out, irparams.LEDbitMask, LOW); //digitalWrite to LOW to ensure INPUT_PULLUP is NOT on
+  }
+}
+
+//kept for backwards compatibility
+//-same as setBlinkLED, except the LED is forced to be LED_BUILTIN, which is usually LED 13 
+//-see here for info on LED_BUILTIN: https://www.arduino.cc/en/Reference/Constants
+void IRrecvBase::blink13(bool blinkActive)
+{
+  this->setBlinkLED(LED_BUILTIN, blinkActive);
 }
 
 //Do the actual blinking off and on
 //This is not part of IRrecvBase because it may need to be inside an ISR
 //and we cannot pass parameters to them.
-void do_Blink(void) {
-  //atomic access guards not required since both irparams.blinkflag and irparams.rawlen are single bytes, and hence, already atomic; also, if this method is called within an ISR, of course it is atomic, as interrupts are by default disabled inside ISRs.
-  if (irparams.blinkflag) {
-    if(irparams.rawlen % 2) {
-      BLINKLED_ON();  // turn pin 13 LED on
-    } 
-    else {
-      BLINKLED_OFF();  // turn pin 13 LED off
-    }
-  }
+void do_Blink(bool blinkState) {
+  //atomic access guards not required since these LED parameters are all single bytes and hence, already atomic; also, if this method is called within an ISR, of course it is atomic, as interrupts are by default disabled inside ISRs.
+  if (irparams.LEDblinkActive)
+    fastDigitalWrite(irparams.LEDp_PORT_out, irparams.LEDbitMask, blinkState);
 }
 
 /* If not using the IRrecv class but only using IRrecvPCI or IRrecvLoop you can eliminate
@@ -1259,7 +1274,7 @@ ISR(IR_RECV_INTR_NAME)
     }
     break;
   }
-  do_Blink();
+  do_Blink(!(bool)irdata);
 }
 #endif //end of ifdef USE_IRRECV
 /*

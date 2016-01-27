@@ -1,6 +1,7 @@
 /* IRLibTimer.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.5   June 2014
- * Copyright 2014 by Chris Young http://cyborg5.com
+ * Version 1.60   January 2016 
+ * Copyright 2014-2016 by Chris Young http://cyborg5.com
+ * With additions by Gabriel Staples (www.ElectricRCAircraftGuy.com); see CHANGELOG.txt 
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
  * GNU LESSER GENERAL PUBLIC LICENSE which as I read it allows me to make modified versions.
@@ -321,8 +322,9 @@
 	#error "Internal code configuration error, no known IR_RECV_TIMER# defined\n"
 #endif
 
-// defines for blinking the LED
-#if defined(CORE_LED0_PIN)
+//Defines for blinking the LED
+//DEPRECATED
+/* #if defined(CORE_LED0_PIN)
   #define BLINKLED       CORE_LED0_PIN
   #define BLINKLED_ON()  (digitalWrite(CORE_LED0_PIN, HIGH))
   #define BLINKLED_OFF() (digitalWrite(CORE_LED0_PIN, LOW))
@@ -344,6 +346,15 @@
   #define BLINKLED       13
   #define BLINKLED_ON()  (PORTB |= B00100000)
   #define BLINKLED_OFF() (PORTB &= B11011111)
-#endif
+#endif */
+
+//Defines for fast pin access, *including* for blinking the LED 
+//-added by Gabriel Staples (www.ElectricRCAircraftGuy.com), 27 Jan 2016 
+//-Notes on speed (microseconds per iteration): 
+//  digitalWrite: ~5.121us per iteration    digitalRead: ~4.617us
+//  direct port manipulation: ~0.145us      direct port manipulation: ~0.082us
+//  fastDigitalWrite: ~0.336us              fastDigitalRead: ~0.148us 
+// #define fastDigitalRead(p_inputRegister, bitMask) ((*p_inputRegister & bitMask) ? HIGH : LOW) //UNUSED AT THIS TIME 
+#define fastDigitalWrite(p_outputRegister, bitMask, state) (state ? *p_outputRegister |= bitMask : *p_outputRegister &= ~bitMask) 
 
 #endif //IRLibTimer_h

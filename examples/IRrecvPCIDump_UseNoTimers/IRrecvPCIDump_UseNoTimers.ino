@@ -52,6 +52,9 @@ void setup()
   // My_Decoder.UseExtnBuf(Buffer);
   //Try different values here for Mark_Excess. 50us is a good starting guess. See detailed notes above for more info.
   My_Receiver.Mark_Excess=50; //us; mark/space correction factor
+  // My_Receiver.blink13(true); //blinks whichever LED is connected to LED_BUILTIN on your board, usually pin 13
+  //                            //-see here for info on LED_BUILTIN: https://www.arduino.cc/en/Reference/Constants
+  My_Receiver.setBlinkLED(13,true); //same as above, except you can change the LED pin number if you like 
   My_Receiver.enableIRIn(); // Start the receiver
 }
 

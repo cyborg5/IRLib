@@ -46,7 +46,6 @@ enum rcvstate_t {STATE_UNKNOWN, STATE_IDLE, STATE_MARK, STATE_SPACE, STATE_STOP,
 typedef struct {
   unsigned char recvpin;    // pin for IR data from detector
   rcvstate_t rcvstate;       // state machine
-  bool blinkflag;         // TRUE to enable blinking of pin 13 on IR processing
   unsigned long timer;     // state timer, counts 50uS ticks.(and other uses)
   unsigned int rawbuf[RAWBUF]; // raw data
   unsigned char rawlen;         // counter of entries in rawbuf
@@ -55,6 +54,12 @@ typedef struct {
   unsigned int *rawbuf2; //GS added; a pointer to an extra buffer; this will be the *primary* buffer, while rawbuf acts as the *secondary* buffer, when used by IRrecvPCI. This is *required* by IRrecvPCI since it requires the incoming data to be double-buffered; this pointer will point to an external buffer that the user *must* create in their main sketch for use with IRrecvPCI; the user will pass this buffer in as a required input parameter during the creation of the IRrecvPCI object.
   unsigned char rawlen2; //corresponds to the length of rawbuf2, above; used by IRrecvPCI 
   bool dataStateChangedToReady; //GS added; IR code buffer *change* state: true if dataStateIsReady (found inside checkForEndOfIRCode()) just made a transition from false to true; false otherwise. This may seem redundant, but it is not. dataStateIsReady indicates the present state, dataStateChangedToReady indicates state transitions. We only want My_Receiver.GetResults to return true if the data state *transitioned* from false to true (ie: dataStateChangedToReady==true), so that we only decode a given set of data once. If GetResults returned true just because dataStateIsready==true, then if you rapidly called GetResults again and again it would keep wasting time decoding and returning the same set of data again and again, rather than decoding and returning each set of data only *once.* 
+  
+  //for LED blinking 
+  uint8_t LEDpinNum;
+  uint8_t LEDbitMask;
+  volatile uint8_t* volatile LEDp_PORT_out; //volatile pointer to volatile data - http://www.barrgroup.com/Embedded-Systems/How-To/C-Volatile-Keyword
+  bool LEDblinkActive; //set true to enable blinking of LED pinNum as IR data comes in
 } 
 irparams_t;
 extern volatile irparams_t irparams;

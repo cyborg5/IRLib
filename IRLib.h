@@ -267,7 +267,8 @@ public:
   IRrecvBase(void) {};
   IRrecvBase(unsigned char recvpin);
   void No_Output(void);
-  void blink13(bool blinkflag);
+  void setBlinkLED(uint8_t pinNum=LED_BUILTIN, bool blinkActive=false);
+  void blink13(bool blinkActive); //same as above, except the pin is forced to be LED_BUILTIN; I left this here for backwards compatibility 
   bool GetResults(IRdecodeBase *decoder, const unsigned int Time_per_Ticks=1);
   void enableIRIn(void);
   virtual void resume(void);
@@ -364,7 +365,9 @@ private:
 //Do the actual blinking off and on
 //This is not part of IRrecvBase because it may need to be inside an ISR
 //and we cannot pass parameters to them.
-void do_Blink(void);
+//-pass in the pinState you'd like to set the LED to; this is usually just the inverse of the IR receiver's pin state 
+//--since the IR receiver is normally HIGH, and we want the LED to be normally LOW, we just use the inverse 
+void do_Blink(bool blinkState);
 
 /* This routine maps interrupt numbers used by attachInterrupt() into pin numbers.
  * NOTE: these interrupt numbers which are passed to “attachInterrupt()” are not 

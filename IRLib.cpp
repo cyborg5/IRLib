@@ -270,7 +270,7 @@ IRdecodeBase::IRdecodeBase(void) {
  * call IRrecvBase::resume immediately before you call decode. See IRrecvBase::GetResults for more info.
  */
 void IRdecodeBase::UseExtnBuf(void *P){
-  rawbuf=(unsigned int*)P; //volatile not necessary here; if using an external buffer, the external buffer's contents are not volatile, since they are not modified directly by any ISR
+  rawbuf=(volatile unsigned int*)P;
 };
 
 /*
@@ -671,8 +671,8 @@ bool IRdecodeRC6::decode(void) {
  * Converts the raw code values into a 32-bit hash code.
  * Hopefully this code is unique for each button.
  */
-#define FNV_PRIME_32 16777619
-#define FNV_BASIS_32 2166136261
+#define FNV_PRIME_32 16777619UL
+#define FNV_BASIS_32 2166136261UL
 // Compare two tick values, returning 0 if newval is shorter,
 // 1 if newval is equal, and 2 if newval is longer
 int IRdecodeHash::compare(unsigned int oldval, unsigned int newval) {
@@ -770,7 +770,7 @@ bool IRrecvLoop::GetResults(IRdecodeBase *decoder) {
   while(irparams.rawlen<RAWBUF) {  //While the buffer not overflowing
     while(OldState==(NewState=digitalRead(irparams.recvpin))) { //While the pin hasn't changed
       if( (DeltaTime = (EndTime=micros()) - StartTime) > 10000) { //If it's a very long wait
-        if(Finished=irparams.rawlen) break; //finished unless it's the opening gap
+        if((Finished=irparams.rawlen)) break; //finished unless it's the opening gap
       }
     }
     if(Finished) break;
@@ -984,7 +984,7 @@ void IRfrequency::DumpResults(bool Detail) {
 
 //See IRLib.h comment explaining this function
  unsigned char Pin_from_Intr(unsigned char inum) {
-  const unsigned char PROGMEM attach_to_pin[]= {
+  static const PROGMEM uint8_t attach_to_pin[]= {
 #if defined(__AVR_ATmega256RFR2__)//Assume Pinoccio Scout
 	4,5,SCL,SDA,RX1,TX1,7
 #elif defined(__AVR_ATmega32U4__) //Assume Arduino Leonardo
@@ -999,7 +999,7 @@ void IRfrequency::DumpResults(bool Detail) {
   return inum;
 #endif
   if (inum<sizeof attach_to_pin) {//note this works because we know it's one byte per entry
-	return attach_to_pin[inum];
+	return (byte)pgm_read_byte(&(attach_to_pin[inum]));
   } else {
     return 255;
   }

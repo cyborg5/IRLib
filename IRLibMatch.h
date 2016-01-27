@@ -1,6 +1,7 @@
 /* IRLibMatch.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.5   June 2014
- * Copyright 2014 by Chris Young http://cyborg5.com
+ * Version 1.60   January 2016 
+ * Copyright 2014-2016 by Chris Young http://cyborg5.com
+ * With additions by Gabriel Staples (www.ElectricRCAircraftGuy.com); see CHANGELOG.txt 
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
  * GNU LESSER GENERAL PUBLIC LICENSE which as I read it allows me to make modified versions.
@@ -49,6 +50,7 @@
 #define USECPERTICK 50  // microseconds per clock interrupt tick
 #define PERCENT_TOLERANCE 25  // percent tolerance in measurements
 #define DEFAULT_ABS_TOLERANCE 75 //absolute tolerance in microseconds
+#define MINIMUM_TIME_GAP_PERMITTED 100 //us; minimum Mark or Space period permitted; GS: for use in IRrecvPCI: if a Mark or Space is less than this value I will filter it out, as if it never occurred.
 
 /* 
  * These revised MATCH routines allow you to use either percentage or absolute tolerances.
@@ -96,5 +98,22 @@ byte IRLIB_DATA_ERROR_MESSAGE(const __FlashStringHelper * s, unsigned char index
 #define DATA_SPACE_ERROR(expected) false
 #define TRAILER_BIT_ERROR(expected) false
 #endif
+
+//For identifying Marks & Spaces in IR codes:
+//-used by IRrecvPCI's ISR, for example 
+//Note:  HIGH times are either: A) dead-time between codes, or B) code Spaces 
+//       LOW times are code Marks
+#define MARK_START (LOW) //this edge indicates the start of a mark, and the end of a space, in the IR code sequence
+                         //we are LOW now, so we were HIGH before 
+#define SPACE_START (HIGH) //this edge indicates the start of a space, and the end of a mark, in the IR code sequence
+                           //we are HIGH now, so we were LOW before
+                           
+//FOR SPEED PROFILING WITH OSCILLOSCOPE
+//-normally, keep this all commented out; uncomment when you need to use an oscilloscope to check the speed or timing of something
+//-Don't forget that a direct-port-access write like this takes 2 clock cycles, or 0.125 us, so you have to subtract
+//2 clock cycles (NOT 4) from whatever time period you profile with the oscilloscope.
+#define PROFILE_PIN3_OUTPUT pinMode(3,OUTPUT)
+#define PROFILE_PIN3_HIGH   PORTD |= _BV(3) //write Arduino pin D3 HIGH
+#define PROFILE_PIN3_LOW    PORTD &= ~_BV(3) //write Arduino pin D3 LOW
 
 #endif //IRLibMatch_h

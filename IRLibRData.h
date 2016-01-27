@@ -1,6 +1,7 @@
 /* IRLibRData.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.5   June 2014
- * Copyright 2014 by Chris Young http://cyborg5.com
+ * Version 1.60   January 2016 
+ * Copyright 2014-2016 by Chris Young http://cyborg5.com
+ * With additions by Gabriel Staples (www.ElectricRCAircraftGuy.com); see CHANGELOG.txt 
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
  * GNU LESSER GENERAL PUBLIC LICENSE which as I read it allows me to make modified versions.
@@ -49,6 +50,11 @@ typedef struct {
   unsigned long timer;     // state timer, counts 50uS ticks.(and other uses)
   unsigned int rawbuf[RAWBUF]; // raw data
   unsigned char rawlen;         // counter of entries in rawbuf
+  
+  //extra variables used by IRrecvPCI: 
+  unsigned int *rawbuf2; //GS added; a pointer to an extra buffer; this will be the *primary* buffer, while rawbuf acts as the *secondary* buffer, when used by IRrecvPCI. This is *required* by IRrecvPCI since it requires the incoming data to be double-buffered; this pointer will point to an external buffer that the user *must* create in their main sketch for use with IRrecvPCI; the user will pass this buffer in as a required input parameter during the creation of the IRrecvPCI object.
+  unsigned char rawlen2; //corresponds to the length of rawbuf2, above; used by IRrecvPCI 
+  bool dataStateChangedToReady; //GS added; IR code buffer *change* state: true if dataStateIsReady (found inside checkForEndOfIRCode()) just made a transition from false to true; false otherwise. This may seem redundant, but it is not. dataStateIsReady indicates the present state, dataStateChangedToReady indicates state transitions. We only want My_Receiver.GetResults to return true if the data state *transitioned* from false to true (ie: dataStateChangedToReady==true), so that we only decode a given set of data once. If GetResults returned true just because dataStateIsready==true, then if you rapidly called GetResults again and again it would keep wasting time decoding and returning the same set of data again and again, rather than decoding and returning each set of data only *once.* 
 } 
 irparams_t;
 extern volatile irparams_t irparams;

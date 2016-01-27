@@ -1,8 +1,8 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.52   January 2016
+ * Version 1.60   January 2016
  * Copyright 2014 by Chris Young http://cyborg5.com
- * Sligth mods, & notes on Mark_Excess, external buffer, etc, added by Gabriel Staples (www.ElectricRCAircraftGuy.com) on 26 Jan 2016 
- * Based on original example sketch for IRremuote library 
+ * Slight mods, & notes on Mark_Excess, external buffer, etc, added by Gabriel Staples (www.ElectricRCAircraftGuy.com) on 26 Jan 2016 
+ * Based on original example sketch for IRremote library 
  * Version 0.11 September, 2009
  * Copyright 2009 Ken Shirriff
  * http://www.righto.com/
@@ -13,12 +13,13 @@
  *
  * Notes on Mark_Excess:
  * Try different values here for Mark_Excess. 50us is a good starting guess. Ken Shirriff originally used 100us. 
- * It is assumed that your IR receiver filters the modulated signal such that marks are several 
- * dozen microseconds too long and spaces are the same amount too short. This is the case for most
- * IR receivers. If using the dirt-cheap (<$1 for 10) 1838 IR receivers from Ebay, however, 
+ * It is assumed that your IR receiver filters the modulated signal such that Marks (LOW periods
+ * from the IR receiver) are several dozen microseconds too long and Spaces (HIGH periods from the
+ * IR receiver) are the same amount too short. This is the case for most IR receivers.
+ * If using the dirt-cheap (<$1 for 10) 1838 IR receivers from Ebay, however, 
  * I recommend setting Mark_Excess to -31us. If using the higher quality TSOP4838 ones, 
  * I recommend setting Mark_Excess to +45us. If Mark_Excess is off by too much, your IR receiver will 
- * appear not to work correctly at all.
+ * appear not to work correctly at all, and will not properly decode IR signals. 
  */
 
 #include <IRLib.h>

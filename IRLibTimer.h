@@ -323,27 +323,27 @@
 
 // defines for blinking the LED
 #if defined(CORE_LED0_PIN)
-#define BLINKLED       CORE_LED0_PIN
-#define BLINKLED_ON()  (digitalWrite(CORE_LED0_PIN, HIGH))
-#define BLINKLED_OFF() (digitalWrite(CORE_LED0_PIN, LOW))
+  #define BLINKLED       CORE_LED0_PIN
+  #define BLINKLED_ON()  (digitalWrite(CORE_LED0_PIN, HIGH))
+  #define BLINKLED_OFF() (digitalWrite(CORE_LED0_PIN, LOW))
 #elif defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-#define BLINKLED       13
-#define BLINKLED_ON()  (PORTB |= B10000000)
-#define BLINKLED_OFF() (PORTB &= B01111111)
+  #define BLINKLED       13
+  #define BLINKLED_ON()  (PORTB |= B10000000)
+  #define BLINKLED_OFF() (PORTB &= B01111111)
 #elif defined(__AVR_ATmega644P__) || defined(__AVR_ATmega644__)
-#define BLINKLED       0
-#define BLINKLED_ON()  (PORTD |= B00000001)
-#define BLINKLED_OFF() (PORTD &= B11111110)
+  #define BLINKLED       0
+  #define BLINKLED_ON()  (PORTD |= B00000001)
+  #define BLINKLED_OFF() (PORTD &= B11111110)
 #elif defined(__AVR_ATmega32U4__) && defined(IR_SEND_TIMER4_HS)
-//Leonardo not teensy. When using Timer4 output is on 13. Therefore disabling blink LED
-//You can add an LED elsewhere if you want
-#define BLINKLED       1
-#define BLINKLED_ON()  (digitalWrite(BLINKLED, HIGH))
-#define BLINKLED_OFF() (digitalWrite(BLINKLED, LOW))
-#else
-#define BLINKLED       13
-#define BLINKLED_ON()  (PORTB |= B00100000)
-#define BLINKLED_OFF() (PORTB &= B11011111)
+  //Leonardo not teensy. When using Timer4 output is on 13. Therefore disabling blink LED
+  //You can add an LED elsewhere if you want
+  #define BLINKLED       1
+  #define BLINKLED_ON()  (digitalWrite(BLINKLED, HIGH))
+  #define BLINKLED_OFF() (digitalWrite(BLINKLED, LOW))
+#else //Arduino Uno, Nano, etc (ATmega328)
+  #define BLINKLED       13
+  #define BLINKLED_ON()  (PORTB |= B00100000)
+  #define BLINKLED_OFF() (PORTB &= B11011111)
 #endif
 
 #endif //IRLibTimer_h

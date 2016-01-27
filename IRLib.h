@@ -1,6 +1,7 @@
 /* IRLib.h from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.51   March 2015
- * Copyright 2014 by Chris Young http://cyborg5.com
+ * Version 1.60   January 2016 
+ * Copyright 2014-2016 by Chris Young http://cyborg5.com
+ * With additions by Gabriel Staples (www.ElectricRCAircraftGuy.com); see CHANGELOG.txt 
  *
  * This library is a major rewrite of IRemote by Ken Shirriff which was covered by
  * GNU LESSER GENERAL PUBLIC LICENSE which as I read it allows me to make modified versions.
@@ -323,9 +324,10 @@ class IRrecvPCI: public IRrecvBase
 {
 public:
   //Note this is interrupt number not pin number
-  IRrecvPCI(unsigned char inum);
+  //GS note: since IRrecvPCI has to be double-buffered now, you *must* pass in a pointer to a buffer, which becomes the primary buffer while irparams.rawbuf becomes the secondary buffer 
+  IRrecvPCI(unsigned char inum, uint16_t *primaryBuffer);
+  void enableIRIn(void);
   bool GetResults(IRdecodeBase *decoder);
-  void resume(void);
 private:
   unsigned char intrnum;
 };

@@ -81,11 +81,11 @@ void IRLIB_TRACE_MESSAGE(const __FlashStringHelper * s);
 byte IRLIB_REJECTION_MESSAGE(const __FlashStringHelper * s);
 byte IRLIB_DATA_ERROR_MESSAGE(const __FlashStringHelper * s, unsigned char index, unsigned int value, unsigned int expected);
 #define RAW_COUNT_ERROR IRLIB_REJECTION_MESSAGE(F("number of raw samples"));
-#define HEADER_MARK_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("header mark"),offset,rawbuf[offset],expected);
-#define HEADER_SPACE_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("header space"),offset,rawbuf[offset],expected);
-#define DATA_MARK_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("data mark"),offset,rawbuf[offset],expected);
-#define DATA_SPACE_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("data space"),offset,rawbuf[offset],expected);
-#define TRAILER_BIT_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("RC5/RC6 trailer bit length"),offset,rawbuf[offset],expected);
+#define HEADER_MARK_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("header mark"),offset,irparams.rawbuf1[offset],expected);
+#define HEADER_SPACE_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("header space"),offset,irparams.rawbuf1[offset],expected);
+#define DATA_MARK_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("data mark"),offset,irparams.rawbuf1[offset],expected);
+#define DATA_SPACE_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("data space"),offset,irparams.rawbuf1[offset],expected);
+#define TRAILER_BIT_ERROR(expected) IRLIB_DATA_ERROR_MESSAGE(F("RC5/RC6 trailer bit length"),offset,irparams.rawbuf1[offset],expected);
 #else
 #define IRLIB_ATTEMPT_MESSAGE(s)
 #define IRLIB_TRACE_MESSAGE(s)

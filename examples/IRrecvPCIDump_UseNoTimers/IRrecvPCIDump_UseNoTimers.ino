@@ -36,12 +36,11 @@
 //Ex: for Arduino Uno/Duemilanove/Nano/Pro Mini, etc (ATmega328), External Interrupt 0 is Pin 2, External Interrupt 1 is Pin 3
 //-for more boards see here: https://www.arduino.cc/en/Reference/AttachInterrupt
 const byte EXT_INTERRUPT_NUMBER = 0; //Pin 2 for ATmega328-based boards, like the Uno
-unsigned int Buffer[RAWBUF]; //NB: you MUST use this external buffer if you want to resume the receiver before 
+IRrecvPCI My_Receiver(EXT_INTERRUPT_NUMBER);
+
+unsigned int Buffer[RAWBUF]; ///////////////////////////NB: you MUST use this external buffer if you want to resume the receiver before 
                              //decoding. Otherwise, you must decode and *then* resume. Search IRLib.cpp for 
                              //"external buffer" for more info.
-                             
-IRrecvPCI My_Receiver(EXT_INTERRUPT_NUMBER, Buffer);
-
 IRdecode My_Decoder;
 
 void setup()
@@ -49,7 +48,7 @@ void setup()
   Serial.begin(115200);
   Serial.println(F("begin"));
   delay(2000);while(!Serial);//delay for Leonardo
-  // My_Decoder.UseExtnBuf(Buffer);
+  My_Decoder.UseExtnBuf(Buffer);
   //Try different values here for Mark_Excess. 50us is a good starting guess. See detailed notes above for more info.
   My_Receiver.Mark_Excess=50; //us; mark/space correction factor
   // My_Receiver.blink13(true); //blinks whichever LED is connected to LED_BUILTIN on your board, usually pin 13

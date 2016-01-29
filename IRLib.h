@@ -63,7 +63,7 @@
 #define VIRTUAL
 #endif
 
-#define RAWBUF 100 // Length of raw duration buffer (cannot exceed 255)
+#define RAWBUF 100 // Length of raw duration buffer (cannot exceed 255); keep this define inside IRLib.h so the user can access it directly from their Arduino sketch
 
 typedef uint8_t IRTYPES; //formerly was an enum
 #define UNKNOWN 0
@@ -88,16 +88,16 @@ public:
   IRTYPES decode_type;           // NEC, SONY, RC5, UNKNOWN etc.
   unsigned long value;           // Decoded value
   unsigned char bits;            // Number of bits in decoded value
-  volatile unsigned int *rawbuf; // Raw intervals in microseconds; GS: now ALWAYS points to irparams.rawbuf1 
-  unsigned char rawlen;          // Number of records in rawbuf.
+  volatile unsigned int *rawbuf; // Raw intervals in microseconds; GS: now ALWAYS points to irparams.rawbuf1; keep this variable, even though redundant with irparams.rawbuf1, for easy public access to the data 
+  unsigned char rawlen;          // Number of records in rawbuf; keep this variable, even though redundant with irparams.rawlen, for easy public access to the data 
   bool IgnoreHeader;             // Relaxed header detection allows AGC to settle
   virtual void Reset(void);      // Initializes the decoder
   virtual bool decode(void);     // This base routine always returns false override with your routine
   bool decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark, unsigned int Head_Space, 
                      unsigned int Mark_One, unsigned int Mark_Zero, unsigned int Space_One, unsigned int Space_Zero);
   virtual void DumpResults (void);
-  void UseExtnBuf(void *P); //Normally uses same rawbuf as IRrecv. Use this to define your own buffer.
-  void copyBuf (IRdecodeBase *source);//copies rawbuf and rawlen from one decoder to another
+  void UseExtnBuf(volatile uint16_t *p_buffer); //use this to allow double-buffering; see extensive double-buffer notes in IRLibRData.h. 
+  // void copyBuf (IRdecodeBase *source);//copies rawbuf and rawlen from one decoder to another; GS: REMOVED, NO LONGER NEEDED; double-buffers are done differently now 
 protected:
   unsigned char offset;           // Index into rawbuf used various places
 };

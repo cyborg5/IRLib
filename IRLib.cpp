@@ -259,13 +259,11 @@ void IRsend::send(IRTYPES Type, unsigned long data, unsigned int data2) {
  * creation of alternative receiver classes separate from the decoder classes.
  */
 IRdecodeBase::IRdecodeBase(void) {
-  //by default, configure for single buffer use (see extensive buffer notes in IRLibRData.h for more info)
   //atomic guards not needed for these single byte volatile variables 
-  irparams.doubleBuffered = false; 
-  irparams.rawbuf2 = rawbuf = irparams.rawbuf1;
+  irparams.rawbuf2 = this->rawbuf = irparams.rawbuf1;
   
   ignoreHeader=false;
-  Reset();
+  reset();
 };
 
 /*
@@ -306,7 +304,7 @@ bool IRdecodeBase::decode(void) {
   return false;
 };
 
-void IRdecodeBase::Reset(void) {
+void IRdecodeBase::reset(void) {
   decode_type= UNKNOWN;
   value=0;
   bits=0;
@@ -710,10 +708,19 @@ bool IRdecodeHash::decode(void) {
 IRrecvBase::IRrecvBase(unsigned char recvpin)
 {
   irparams.recvpin = recvpin; //note: irparams.recvpin is atomically safe since it cannot be modified after object creation 
-  Init();
+  init();
 }
-void IRrecvBase::Init(void) {
+
+//initialize IR receiver base object 
+void IRrecvBase::init(void) {
+  //initialize key global irparams variables
   irparams.LEDblinkActive = false;
+  irparams.pauseISR = false;
+  irparams.interruptIsDetached = true; 
+  //by default, configure for single buffer use (see extensive buffer notes in IRLibRData.h for more info)
+  irparams.doubleBuffered = false; 
+  
+  //initialize IRrecvBase variable:
   Mark_Excess=100;
 }
 
@@ -730,7 +737,7 @@ unsigned char IRrecvBase::getPinNum(void){
  * value in Time_per_Ticks, in order to convert ticks to us.
  */
 bool IRrecvBase::getResults(IRdecodeBase *decoder, const unsigned int Time_per_Tick) {
-  decoder->Reset();//clear out any old values.
+  decoder->reset();//clear out any old values.
 /* Typically IR receivers over-report the length of a mark and under-report the length of a space.
  * This routine adjusts for that by subtracting Mark_Excess from recorded marks and
  * adding it to recorded spaces. The amount of adjustment used to be defined in IRLibMatch.h.
@@ -757,7 +764,7 @@ bool IRrecvBase::getResults(IRdecodeBase *decoder, const unsigned int Time_per_T
 
 void IRrecvBase::enableIRIn(void) { 
   pinMode(irparams.recvpin, INPUT_PULLUP); //many IR receiver datasheets recommend a >10~20K pullup resistor from the output line to 5V; using INPUT_PULLUP does just that
-  resume();
+  resume(); //call the child class's resume function (ex: IRrecvPCI::resume)
 }
 
 //Note: one place resume is called is in IRrecvBase::enableIRIn
@@ -813,7 +820,7 @@ bool IRrecvLoop::getResults(IRdecodeBase *decoder) {
  */
 
 IRrecvPCI::IRrecvPCI(unsigned char inum) {
-  Init();
+  init();
   intrnum=inum;
   irparams.recvpin=Pin_from_Intr(inum);
 }
@@ -947,8 +954,7 @@ void IRrecvPCI_Handler()
 
 void IRrecvPCI::enableIRIn(void) {
   IRrecvBase::enableIRIn();
-  //set up External interrupt 
-  attachInterrupt(intrnum, IRrecvPCI_Handler, CHANGE);
+  this->resume();
 }
 
 //---------------------------------------------------------------------------------------
@@ -961,7 +967,7 @@ bool IRrecvPCI::getResults(IRdecodeBase *decoder)
 {
   bool newDataJustIn = false; 
   
-  //Order is important here ~GS:
+  //Order is VERY important here; I'm doing everything in this order for a reason. ~GS:
   //1) first, check to see if irparams.dataStateChangedToReady==true, so we don't needlessly call checkForEndOfIRCode() if data is already ready 
   if (irparams.dataStateChangedToReady==true) //variable is a singe byte; already atomic; atomic guards not needed 
     newDataJustIn = true;
@@ -981,33 +987,43 @@ bool IRrecvPCI::getResults(IRdecodeBase *decoder)
   //3) if new data is ready, process it 
   if (newDataJustIn==true)
     IRrecvBase::getResults(decoder); //mandatory to call whenever a new IR data packet is ready to be decoded; this copies volatile data from the secondary buffer into the decoder, while subtracting Mark_Exces from Marks, and adding it to Spaces, among other things
+  //4) detach the interrupt if the ISR is paused (the ISR will automatically set the pauseISR flat to true to pause itself whenever a full IR code comes in if it is single-buffered instead of double-buffered)
+  if (irparams.pauseISR==true) //note: pauseISR is a single byte and already atomic; no atomic guards needed 
+    this->detachInterrupt();
     
   return newDataJustIn;
 };
 
 //---------------------------------------------------------------------------------------
-//IRrecvPCI::disableInterrupt
+//IRrecvPCI::detachInterrupt
 //By Gabriel Staples (www.ElectricRCAircraftGuy.com) on 29 Jan 2016
 //-disable the ISR so that it will no longer interrupt the code 
 //---------------------------------------------------------------------------------------
-/* void IRrecvPCI::disableInterrupt()
+void IRrecvPCI::detachInterrupt()
 {
-  irparams.pauseISR = false; //already atomic; resume ISR data collection
-  /////////////////re-attach interrupt here 
-  IRrecvBase::resume();
-} */
+  ::detachInterrupt(intrnum); //Note: the "::" tells the compiler to use the "global namespace" to find this function--in other words, this is calling the the Arduino core detachInterrupt function, rather than recursively calling the IRrecvPCI::detachInterrupt function. (see here: http://stackoverflow.com/questions/13322530/c-global-structure-creates-name-conflict)
+  irparams.interruptIsDetached = true;
+}
 
 //---------------------------------------------------------------------------------------
 //IRrecvPCI::resume 
 //By Gabriel Staples (www.ElectricRCAircraftGuy.com) on 29 Jan 2016
 //-resume data collection 
-//-for use ONLY when using single (not double) buffer, OR to resume IR receives after user has manually paused them 
+//-this function should be called by the user in only 2 cases:
+//--1) when using a single (not double) buffer, you need to resume after you are done calling any decoder functions you need, such as decode or dumpResults
+//--2) to manually resume IR receives after the you have manually paused them by calling the receiver's detachInterrupt() function; this applies whether single OR double-buffered 
 //---------------------------------------------------------------------------------------
 void IRrecvPCI::resume()
 {
-  irparams.pauseISR = false; //already atomic; resume ISR data collection
-  /////////////////re-attach interrupt here 
-  IRrecvBase::resume();
+  //note: atomic guards not needed for single-byte volatile variables 
+  if (irparams.interruptIsDetached==true) //Note: interruptIsDetached will *always* be true if either A) we are single-buffered, the ISR set pauseISR to true, and then the user called getResults, or B) the user called the IRrecv::detachInterrupt function directly. We ONLY want to do all this stuff if one of the above events happened. Otherwise, we want to NOT do the following things, such as in the event we are double-buffered, but the user accidentally called resume() anyway, which they should not do.
+  {
+    irparams.pauseISR = false; //already atomic--no atomic guards required; re-allow ISR data collection
+    //set up/re-attach External interrupt 
+    irparams.interruptIsDetached = false; //reset 
+    attachInterrupt(intrnum, IRrecvPCI_Handler, CHANGE);
+    IRrecvBase::resume(); //reset rawlen1 & 2 to 0, among other things 
+  }
 }
 
  /* This class facilitates detection of frequency of an IR signal. Requires a TSMP58000

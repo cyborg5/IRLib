@@ -46,8 +46,8 @@ IRdecode My_Decoder;
 void setup()
 {
   Serial.begin(115200);
-  Serial.println(F("begin"));
   delay(2000);while(!Serial);//delay for Leonardo
+  Serial.println(F("begin"));
   // My_Decoder.useDoubleBuffer(Buffer);
   //Try different values here for Mark_Excess. 50us is a good starting guess. See detailed notes above for more info.
   My_Receiver.Mark_Excess=50; //us; mark/space correction factor
@@ -72,6 +72,7 @@ void loop() {
     
     //FOR EXTENSIVE OUTPUT:
     My_Decoder.dumpResults();
-    My_Receiver.resume(); //for single buffer use; do NOT resume until AFTER done calling all decoder functions that use the last data acquired, such as decode and dumpResults 
+    My_Receiver.resume(); //for single buffer use; do NOT resume until AFTER done calling all decoder functions that use the last data acquired, such as decode and dumpResults; if using a double buffer, don't use resume() at all unless you called My_Receiver.detachInterrupt first, and now want to resume IR receiving. 
   }
+  // My_Receiver.detachInterrupt();
 }

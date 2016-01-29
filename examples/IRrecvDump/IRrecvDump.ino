@@ -37,6 +37,7 @@ void setup()
 {
   Serial.begin(9600);
   delay(2000);while(!Serial);//delay for Leonardo
+  Serial.println(F("begin"));
   My_Decoder.useDoubleBuffer(Buffer);
   //Try different values here for Mark_Excess. 50us is a good starting guess. See detailed notes above for more info.
   My_Receiver.Mark_Excess=50; //us; mark/space correction factor

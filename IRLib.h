@@ -91,7 +91,7 @@ public:
   volatile unsigned int *rawbuf; // Raw intervals in microseconds; GS: now ALWAYS points to irparams.rawbuf1; keep this variable, even though redundant with irparams.rawbuf1, for easy public access to the data 
   unsigned char rawlen;          // Number of records in rawbuf; keep this variable, even though redundant with irparams.rawlen, for easy public access to the data 
   bool ignoreHeader;             // Relaxed header detection allows AGC to settle
-  virtual void Reset(void);      // Initializes the decoder
+  virtual void reset(void);      // Initializes the decoder
   virtual bool decode(void);     // This base routine always returns false override with your routine
   bool decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark, unsigned int Head_Space, 
                      unsigned int Mark_One, unsigned int Mark_Zero, unsigned int Space_One, unsigned int Space_Zero);
@@ -264,6 +264,7 @@ public:
 class IRrecvBase
 {
 public:
+  //methods (functions):
   IRrecvBase(void) {};
   IRrecvBase(unsigned char recvpin);
   void noIROutput(void); //force IR output LED pin to Output LOW 
@@ -273,9 +274,10 @@ public:
   void enableIRIn(void);
   virtual void resume(void);
   unsigned char getPinNum(void);
+  //variables:
   int16_t Mark_Excess;
 protected:
-  void Init(void);
+  void init(void);
 };
 
 /* Original IRrecv class uses 50µs interrupts to sample input. While this is generally
@@ -328,7 +330,7 @@ public:
   IRrecvPCI(unsigned char inum);
   void enableIRIn(void);
   bool getResults(IRdecodeBase *decoder);
-  void disableInterrupt(); //disable the ISR so that it will no longer interrupt the code 
+  void detachInterrupt(); //disable the ISR so that it will no longer interrupt the code 
   void resume(); //resume data collection; see notes in IRLib.cpp 
 private:
   unsigned char intrnum;

@@ -51,7 +51,7 @@
  * related to INT0_vect then comment out the following line to eliminate the conflicts.
  */
  #define USE_ATTACH_INTERRUPTS
-/* If not using either DumpResults methods of IRdecode nor IRfrequency you can
+/* If not using either dumpResults methods of IRdecode nor IRfrequency you can
  * comment out the following define to eliminate considerable program space.
  */
 #define USE_DUMP
@@ -90,13 +90,13 @@ public:
   unsigned char bits;            // Number of bits in decoded value
   volatile unsigned int *rawbuf; // Raw intervals in microseconds; GS: now ALWAYS points to irparams.rawbuf1; keep this variable, even though redundant with irparams.rawbuf1, for easy public access to the data 
   unsigned char rawlen;          // Number of records in rawbuf; keep this variable, even though redundant with irparams.rawlen, for easy public access to the data 
-  bool IgnoreHeader;             // Relaxed header detection allows AGC to settle
+  bool ignoreHeader;             // Relaxed header detection allows AGC to settle
   virtual void Reset(void);      // Initializes the decoder
   virtual bool decode(void);     // This base routine always returns false override with your routine
   bool decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark, unsigned int Head_Space, 
                      unsigned int Mark_One, unsigned int Mark_Zero, unsigned int Space_One, unsigned int Space_Zero);
-  virtual void DumpResults (void);
-  void UseExtnBuf(volatile uint16_t *p_buffer); //use this to allow double-buffering; see extensive double-buffer notes in IRLibRData.h. 
+  virtual void dumpResults (void);
+  void useDoubleBuffer(volatile uint16_t *p_buffer); //use this to allow double-buffering; see extensive double-buffer notes in IRLibRData.h. 
   // void copyBuf (IRdecodeBase *source);//copies rawbuf and rawlen from one decoder to another; GS: REMOVED, NO LONGER NEEDED; double-buffers are done differently now 
 protected:
   unsigned char offset;           // Index into rawbuf used various places
@@ -266,10 +266,10 @@ class IRrecvBase
 public:
   IRrecvBase(void) {};
   IRrecvBase(unsigned char recvpin);
-  void No_Output(void);
+  void noIROutput(void); //force IR output LED pin to Output LOW 
   void setBlinkLED(uint8_t pinNum=LED_BUILTIN, bool blinkActive=false);
   void blink13(bool blinkActive); //same as above, except the pin is forced to be LED_BUILTIN; I left this here for backwards compatibility 
-  bool GetResults(IRdecodeBase *decoder, const unsigned int Time_per_Ticks=1);
+  bool getResults(IRdecodeBase *decoder, const unsigned int Time_per_Ticks=1);
   void enableIRIn(void);
   virtual void resume(void);
   unsigned char getPinNum(void);
@@ -289,16 +289,16 @@ class IRrecv: public IRrecvBase
 {
 public:
   IRrecv(unsigned char recvpin):IRrecvBase(recvpin){};
-  bool GetResults(IRdecodeBase *decoder);
+  bool getResults(IRdecodeBase *decoder);
   void enableIRIn(void);
   void resume(void);
 };
 #endif
 /* This receiver uses no interrupts or timers. Other interrupt driven receivers
- * allow you to do other things and call GetResults at your leisure to see if perhaps
- * a sequence has been received. Typically you would put GetResults in your loop
+ * allow you to do other things and call getResults at your leisure to see if perhaps
+ * a sequence has been received. Typically you would put getResults in your loop
  * and it would return false until the sequence had been received. However because this
- * receiver uses no interrupts, it takes control of your program when you call GetResults
+ * receiver uses no interrupts, it takes control of your program when you call getResults
  * and doesn't let go until it's got something to show you. The advantage is you don't need
  * interrupts which would make it easier to use and nonstandard hardware and will allow you to
  * use any digital input pin. Timing of this routine is only as accurate as your "micros();"
@@ -307,14 +307,14 @@ class IRrecvLoop: public IRrecvBase
 {
 public:
   IRrecvLoop(unsigned char recvpin):IRrecvBase(recvpin){};
-  bool GetResults(IRdecodeBase *decoder);
+  bool getResults(IRdecodeBase *decoder);
 };
 
 /* This receiver uses the pin change hardware interrupt to detect when your input pin
  * changes state. It gives more detailed results than the 50µs interrupts of IRrecv
  * and theoretically is more accurate than IRrecvLoop. However because it only detects
- * pin changes, it doesn't always know when it's finished. GetResults attempts to detect
- * a long gap of space but sometimes the next signal gets there before GetResults notices.
+ * pin changes, it doesn't always know when it's finished. getResults attempts to detect
+ * a long gap of space but sometimes the next signal gets there before getResults notices.
  * This means the second set of signals can get messed up unless there is a long gap.
  * This receiver is based in part on Arduino firmware for use with AnalysIR IR signal analysis
  * software for Windows PCs. Many thanks to the people at http://analysir.com for their 
@@ -327,7 +327,9 @@ public:
   //Note this is interrupt number not pin number
   IRrecvPCI(unsigned char inum);
   void enableIRIn(void);
-  bool GetResults(IRdecodeBase *decoder);
+  bool getResults(IRdecodeBase *decoder);
+  void disableInterrupt(); //disable the ISR so that it will no longer interrupt the code 
+  void resume(); //resume data collection; see notes in IRLib.cpp 
 private:
   unsigned char intrnum;
 };
@@ -346,18 +348,18 @@ public:
   //Note this is interrupt number, not pin number
   IRfrequency(unsigned char inum);
   void enableFreqDetect(void);
-  bool HaveData(void);      //detect if data is received
+  bool haveData(void);      //detect if data is received
   void disableFreqDetect(void);
-  void ComputeFreq(void);	//computes but does not print results
-  void DumpResults(bool Detail);	//computes and prints result
+  void computeFreq(void);	//computes but does not print results
+  void dumpResults(bool Detail);	//computes and prints result
   unsigned char getPinNum(void);//get value computed from interrupt number
-  double Results; //results in kHz
-  unsigned char Samples; //number of samples used in computation
+  double results; //results in kHz
+  unsigned char samples; //number of samples used in computation
 private:
   volatile unsigned FREQUENCY_BUFFER_TYPE Time_Stamp[256]; //MUST be volatile because used both in and outside ISRs
   unsigned char intrnum, pin;
   unsigned int i;
-  unsigned long Sum;
+  unsigned long sum;
 };
 #endif // ifdef USE_ATTACH_INTERRUPTS
 

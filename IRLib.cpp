@@ -264,7 +264,7 @@ IRdecodeBase::IRdecodeBase(void) {
   irparams.doubleBuffered = false; 
   irparams.rawbuf2 = rawbuf = irparams.rawbuf1;
   
-  IgnoreHeader=false;
+  ignoreHeader=false;
   Reset();
 };
 
@@ -274,9 +274,9 @@ IRdecodeBase::IRdecodeBase(void) {
  * as irparams.rawbuf1. However, if you want to use a double-buffer so you can continue to receive
  * new data while decoding the previous IR code then you can define a separate buffer in your 
  * Arduino sketch and and pass the address here.
- * -See IRrecvBase::GetResults, and the extensive buffer notes in IRLibRData.h, for more info.
+ * -See IRrecvBase::getResults, and the extensive buffer notes in IRLibRData.h, for more info.
  */
-void IRdecodeBase::UseExtnBuf(volatile uint16_t *p_buffer){
+void IRdecodeBase::useDoubleBuffer(volatile uint16_t *p_buffer){
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
   {
     irparams.rawbuf2 = p_buffer; //atomic guards required for volatile pointers since they are multi-byte 
@@ -313,12 +313,12 @@ void IRdecodeBase::Reset(void) {
   rawlen=0;
 };
 #ifndef USE_DUMP
-void DumpUnavailable(void) {Serial.println(F("DumpResults unavailable"));}
+void DumpUnavailable(void) {Serial.println(F("dumpResults unavailable"));}
 #endif
 /*
  * This method dumps useful information about the decoded values.
  */
-void IRdecodeBase::DumpResults(void) {
+void IRdecodeBase::dumpResults(void) {
 #ifdef USE_DUMP
   int i;unsigned long Extent;int interval;
   if(decode_type<=LAST_PROTOCOL){
@@ -374,7 +374,7 @@ bool IRdecodeBase::decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark
 // Some protocols need to do custom header work.
   unsigned long data = 0;  unsigned char Max; offset=1;
   if (Raw_Count) {if (rawlen != Raw_Count) return RAW_COUNT_ERROR;}
-  if(!IgnoreHeader) {
+  if(!ignoreHeader) {
     if (Head_Mark) {
 	  if (!MATCH(rawbuf[offset],Head_Mark)) return HEADER_MARK_ERROR(Head_Mark);
 	}
@@ -423,8 +423,8 @@ bool IRdecodeBase::decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark
 
 /*
  * This routine has been modified significantly from the original IRremote.
- * It assumes you've already called IRrecvBase::GetResults and it was true.
- * The purpose of GetResults is to determine if a complete set of signals
+ * It assumes you've already called IRrecvBase::getResults and it was true.
+ * The purpose of getResults is to determine if a complete set of signals
  * has been received. It then copies the raw data into your decoder's rawbuf
  * By moving the test for completion and the copying of the buffer
  * outside of this "decode" method you can use the individual decode
@@ -581,7 +581,7 @@ IRdecodeRC::RCLevel IRdecodeRC::getRClevel(unsigned char *used, const unsigned i
     avail = 3;
   } 
   else {
-    if((IgnoreHeader) && (offset==1) && (width<t1))
+    if((ignoreHeader) && (offset==1) && (width<t1))
 	  avail =1;
 	else{
       return ERROR;}
@@ -634,7 +634,7 @@ bool IRdecodeRC6::decode(void) {
   IRLIB_ATTEMPT_MESSAGE(F("RC6"));
   if (rawlen < MIN_RC6_SAMPLES) return RAW_COUNT_ERROR;
   // Initial mark
-  if (!IgnoreHeader) {
+  if (!ignoreHeader) {
     if (!MATCH(rawbuf[1], RC6_HDR_MARK)) return HEADER_MARK_ERROR(RC6_HDR_MARK);
   }
   if (!MATCH(rawbuf[2], RC6_HDR_SPACE)) return HEADER_SPACE_ERROR(RC6_HDR_SPACE);
@@ -721,15 +721,15 @@ unsigned char IRrecvBase::getPinNum(void){
   return irparams.recvpin;
 }
 
-/* Any receiver class must implement a GetResults method that will return true when a complete code
- * has been received. At a successful end of your GetResults code you should then call IRrecvBase::GetResults
+/* Any receiver class must implement a getResults method that will return true when a complete code
+ * has been received. At a successful end of your getResults code you should then call IRrecvBase::getResults
  * and it will manipulate the data inside irparams.rawbuf1 (same as decoder.rawbuf), which would have 
  * already been copied into irparams.rawbuf1 from irparams.rawbuf2, if double-buffered, by the ISR. 
  * Some receivers provide results in rawbuf1 measured in ticks on some number of microseconds while others
  * return results in actual microseconds. If you use ticks then you should pass a multiplier
  * value in Time_per_Ticks, in order to convert ticks to us.
  */
-bool IRrecvBase::GetResults(IRdecodeBase *decoder, const unsigned int Time_per_Tick) {
+bool IRrecvBase::getResults(IRdecodeBase *decoder, const unsigned int Time_per_Tick) {
   decoder->Reset();//clear out any old values.
 /* Typically IR receivers over-report the length of a mark and under-report the length of a space.
  * This routine adjusts for that by subtracting Mark_Excess from recorded marks and
@@ -737,7 +737,7 @@ bool IRrecvBase::GetResults(IRdecodeBase *decoder, const unsigned int Time_per_T
  * It is now user adjustable with the old default of 100;
  * NB: By copying the the values from irparams to decoder we can call IRrecvBase::resume 
  * immediately while decoding is still in progress, IF AND ONLY IF you are using an external buffer. 
- * See the function "IRdecodeBase::UseExtnBuf" for more info. If you are not using an external buffer,
+ * See the function "IRdecodeBase::useDoubleBuffer" for more info. If you are not using an external buffer,
  * you must wait until decoding is complete before resuming, or else you risk over-writing the very data
  * you are trying to decode.
  */
@@ -760,7 +760,7 @@ void IRrecvBase::enableIRIn(void) {
   resume();
 }
 
-//Note: resume is called by IRrecvBase::enableIRIn
+//Note: one place resume is called is in IRrecvBase::enableIRIn
 void IRrecvBase::resume() {
   //ensure atomic access to volatile variables 
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -771,17 +771,17 @@ void IRrecvBase::resume() {
 }
 
 /* This receiver uses no interrupts or timers. Other interrupt driven receivers
- * allow you to do other things and call GetResults at your leisure to see if perhaps
- * a sequence has been received. Typically you would put GetResults in your loop
+ * allow you to do other things and call getResults at your leisure to see if perhaps
+ * a sequence has been received. Typically you would put getResults in your loop
  * and it would return false until the sequence had been received. However because this
- * receiver uses no interrupts, it takes control of your program when you call GetResults
+ * receiver uses no interrupts, it takes control of your program when you call getResults
  * and doesn't let go until it's got something to show you. The advantage is you don't need
  * interrupts which would make it easier to use and nonstandard hardware and will allow you to
  * use any digital input pin. Timing of this routine is only as accurate as your "micros();"
  * GS Notes: double-buffer doesn't make sense for IRrecvLoop, so we will store data directly
  * into irparams.rawbuf1 directly, whereas an ISR would store it into irparams.rawbuf2 instead.
  */
-bool IRrecvLoop::GetResults(IRdecodeBase *decoder) {
+bool IRrecvLoop::getResults(IRdecodeBase *decoder) {
   bool Finished=false;
   byte OldState=HIGH;byte NewState;
   unsigned long StartTime, DeltaTime, EndTime;
@@ -797,15 +797,15 @@ bool IRrecvLoop::GetResults(IRdecodeBase *decoder) {
     irparams.rawbuf1[irparams.rawlen1++]=DeltaTime;
     OldState=NewState;StartTime=EndTime;
   };
-  IRrecvBase::GetResults(decoder);
+  IRrecvBase::getResults(decoder);
   return true;
 }
 #ifdef USE_ATTACH_INTERRUPTS
 /* This receiver uses the pin change hardware interrupt to detect when your input pin
  * changes state. It gives more detailed results than the 50us interrupts of IRrecv
  * and theoretically is more accurate than IRrecvLoop. However because it only detects
- * pin changes, it doesn't always know when it's finished. GetResults attempts to detect
- * a long gap of space but sometimes the next signal gets there before GetResults notices.
+ * pin changes, it doesn't always know when it's finished. getResults attempts to detect
+ * a long gap of space but sometimes the next signal gets there before getResults notices.
  * This means the second set of signals can get messed up unless there is a long gap.
  * This receiver is based in part on Arduino firmware for use with AnalysIR IR signal analysis
  * software for Windows PCs. Many thanks to the people at http://analysir.com for their 
@@ -824,9 +824,9 @@ IRrecvPCI::IRrecvPCI(unsigned char inum) {
 //-a global function for use inside and outside an ISR, by IRrecvPCI
 //-this is a non-reentrant function, since it contains static variables & is shared with an ISR, so 
 // whenever you call it from outside an ISR, ***put atomic guards around the whole function call, AND
-// around the portion of code just before that, where dt is determined.*** See IRrecvPCI::GetResults 
+// around the portion of code just before that, where dt is determined.*** See IRrecvPCI::getResults 
 // for an example
-//--ie: this function will also be called by IRrecPCI::GetResults, outside of ISRs, so be sure 
+//--ie: this function will also be called by IRrecPCI::getResults, outside of ISRs, so be sure 
 //  to use atomic access guards!
 //-pass in the IR receiver input pin pinState, and the time elapsed (dt) in us since the last Mark or Space
 // edge occurred. 
@@ -846,36 +846,37 @@ bool checkForEndOfIRCode(bool pinState, unsigned long dt, byte whoIsCalling)
   //Check for long Space to indicate end of IR code 
   //-if the USER is calling this function, we want the pinState to be HIGH (SPACE_START), and dt to be long, to consider this to be the end of the IR code; if pinState transitions from HIGH to LOW, and dt is long, we will let the ISR catch and handle it, rather than the user's call
   //-if the ISR is calling this function, we want the pinState to be LOW (MARK_START), and dt to be long , to consider this to be the end of the IR code, since the ISR is only called when pin state *transitions* occur 
-  if ((whoIsCalling==CALLED_BY_ISR && pinState==MARK_START && dt >= 10000) || 
-      (whoIsCalling==CALLED_BY_USER && pinState==HIGH && dt >= 10000)) //a long SPACE gap (10ms or more) just occurred; this indicates the end of a complete IR code 
+  //-note: "irparams.rawlen2>1" was added to ensure that there actually is data that has been acquired 
+  if ((whoIsCalling==CALLED_BY_ISR && pinState==MARK_START && dt >= 10000 && irparams.rawlen2>1) || 
+      (whoIsCalling==CALLED_BY_USER && pinState==HIGH && dt >= 10000 && irparams.rawlen2>1)) //a long SPACE gap (10ms or more) just occurred; this indicates the end of a complete IR code 
   {
     dataStateIsReady = true; //the current data state; true since we just detected the end of the IR code 
     
     //check for a *change of state*; only copy the buffer if the change of state just went from false to true
-    //-necessary since this function can be repeatedly called by a user via GetResults, regardless of whether or not any new data comes in 
+    //-necessary since this function can be repeatedly called by a user via getResults, regardless of whether or not any new data comes in 
     if (dataStateIsReady==true && dataStateIsReady_old==false)
     {
       //data is now ready to be decoded
       dataStateChangedToReady = true; 
       
       if (whoIsCalling==CALLED_BY_ISR)
-        irparams.dataStateChangedToReady = true; //used to notify the user that data state just changed to ready, next time the user calls GetResults
+        irparams.dataStateChangedToReady = true; //used to notify the user that data state just changed to ready, next time the user calls getResults
       else if (whoIsCalling==CALLED_BY_USER)
-        irparams.dataStateChangedToReady = false; //this whole function will return true, but since the user is reading this now (calling this whole function from within GetResults), and can choose to act on it to decode the data now, it gets immediately reset back to false; otherwise, the user would accidentally try to decode the same data more than once simply by repeatedly calling GetResults rapidly. 
+        irparams.dataStateChangedToReady = false; //this whole function will return true, but since the user is reading this now (calling this whole function from within getResults), and can choose to act on it to decode the data now, it gets immediately reset back to false; otherwise, the user would accidentally try to decode the same data more than once simply by repeatedly calling getResults rapidly. 
       
       if (irparams.doubleBuffered==true)
       {
         //copy buffer from primary (rawlen2) to secondary (rawlen) buffer; the secondary buffer will be waiting for the user to decode it, while the primary buffer will be written in by this ISR as any new data comes in 
         for(unsigned char i=0; i<irparams.rawlen2; i++) 
           irparams.rawbuf1[i] = irparams.rawbuf2[i];
-        irparams.rawlen1 = irparams.rawlen2;
-        irparams.rawlen2 = 0; //start of a new IR code 
       }
       else //irparams.doubleBuffered==false; for single-buffering:
       {
         irparams.pauseISR = true; //since single-buffered only, we must pause the reception of data until decoding the current data is complete
         //no need to copy anything from irparams.rawbuf2 to irparams.rawbuf1, because when single-buffered, irparams.rawbuf2 points to irparams.rawbuf1 anyway, so they are the same buffer
       }
+      irparams.rawlen1 = irparams.rawlen2;
+      irparams.rawlen2 = 0; //reset index; start of a new IR code 
     }
   }
   else //end of IR code NOT found yet 
@@ -892,14 +893,14 @@ bool checkForEndOfIRCode(bool pinState, unsigned long dt, byte whoIsCalling)
 //Completely rewritten by Gabriel Staples (www.ElectricRCAircraftGuy.com) on 26 Jan 2016
 //-no state machine is used for this ISR anymore 
 //-raw codes are optionally double-buffered, in which case raw code values are continually received, and never ignored, 
-// even if the user has never called GetResults, or has not called it in a long time 
+// even if the user has never called getResults, or has not called it in a long time 
 //-the secondary buffer is rawbuf2; a *pointer* to it is stored in irparams, and it is what 
 // is used by the ISR to continually store new IR Mark and Space raw values as they come in.
 //--the secondary buffer must be *externally created* by the user in their Arduino sketch,
 //  and only a *pointer* to it is passed in to irparams; Refer to the 
 //  example sketch called "IRrecvPCIDump_UseNoTimers.ino" for an example.
 //-the primary buffer is rawbuf1; it is stored in irparams and passed to the decode 
-// routines whenever a full sequence is ready to be decoded, and the user calls GetResults.
+// routines whenever a full sequence is ready to be decoded, and the user calls getResults.
 //-The ISR automatically copies the secondary buffer (rawbuf2) to the primary buffer (rawbuf1)
 // whenever a full IR code has been received, which is noted by a long space (HIGH pd
 // on the IR receiver output pin) of >10ms. 
@@ -951,12 +952,12 @@ void IRrecvPCI::enableIRIn(void) {
 }
 
 //---------------------------------------------------------------------------------------
-//IRrecvPCI::GetResults 
+//IRrecvPCI::getResults 
 //Completely rewritten by Gabriel Staples (www.ElectricRCAircraftGuy.com) on 27 Jan 2016
 //-returns true if data is received & ready to be decoded, false otherwise 
 //-see the notes just above IRrecvPCI_Handler() & checkForEndOfIRCode for more info. 
 //---------------------------------------------------------------------------------------
-bool IRrecvPCI::GetResults(IRdecodeBase *decoder) 
+bool IRrecvPCI::getResults(IRdecodeBase *decoder) 
 {
   bool newDataJustIn = false; 
   
@@ -979,10 +980,35 @@ bool IRrecvPCI::GetResults(IRdecodeBase *decoder)
   }
   //3) if new data is ready, process it 
   if (newDataJustIn==true)
-    IRrecvBase::GetResults(decoder); //mandatory to call whenever a new IR data packet is ready to be decoded; this copies volatile data from the secondary buffer into the decoder, while subtracting Mark_Exces from Marks, and adding it to Spaces, among other things
+    IRrecvBase::getResults(decoder); //mandatory to call whenever a new IR data packet is ready to be decoded; this copies volatile data from the secondary buffer into the decoder, while subtracting Mark_Exces from Marks, and adding it to Spaces, among other things
     
   return newDataJustIn;
 };
+
+//---------------------------------------------------------------------------------------
+//IRrecvPCI::disableInterrupt
+//By Gabriel Staples (www.ElectricRCAircraftGuy.com) on 29 Jan 2016
+//-disable the ISR so that it will no longer interrupt the code 
+//---------------------------------------------------------------------------------------
+/* void IRrecvPCI::disableInterrupt()
+{
+  irparams.pauseISR = false; //already atomic; resume ISR data collection
+  /////////////////re-attach interrupt here 
+  IRrecvBase::resume();
+} */
+
+//---------------------------------------------------------------------------------------
+//IRrecvPCI::resume 
+//By Gabriel Staples (www.ElectricRCAircraftGuy.com) on 29 Jan 2016
+//-resume data collection 
+//-for use ONLY when using single (not double) buffer, OR to resume IR receives after user has manually paused them 
+//---------------------------------------------------------------------------------------
+void IRrecvPCI::resume()
+{
+  irparams.pauseISR = false; //already atomic; resume ISR data collection
+  /////////////////re-attach interrupt here 
+  IRrecvBase::resume();
+}
 
  /* This class facilitates detection of frequency of an IR signal. Requires a TSMP58000
  * or equivalent device connected to the hardware interrupt pin.
@@ -1013,8 +1039,8 @@ void IRfrequency::enableFreqDetect(void){
     for(i=0; i<256; i++) Time_Stamp[i]=0; //Time_Stamp is volatile
     IRfreqCount=0; //volatile variable 
   }
-  Results=0.0;
-  Samples=0;
+  results=0.0;
+  samples=0;
 };
 /* Test to see if we have collected at least one full buffer of data.
  * Note values are always zeroed before beginning so any non-zero data
@@ -1023,7 +1049,7 @@ void IRfrequency::enableFreqDetect(void){
  * nearly impossible for two consecutive elements to be zero unless
  * we had not yet collected data.
  */
-bool IRfrequency::HaveData(void) {
+bool IRfrequency::haveData(void) {
   bool dataIsReceived;
   //ensure atomic access to volatile variables 
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -1037,26 +1063,26 @@ void IRfrequency::disableFreqDetect(void){
   detachInterrupt(intrnum);
  };
 
-//compute the incoming frequency in kHz and store into public variable IRfrequency.Results
-void IRfrequency::ComputeFreq(void){
-  Samples=0; Sum=0;
+//compute the incoming frequency in kHz and store into public variable IRfrequency.results
+void IRfrequency::computeFreq(void){
+  samples=0; sum=0;
   for(i=1; i<256; i++) {
-    unsigned char Interval;
+    unsigned char interval;
     //ensure atomic access to volatile variables; Time_Stamp is volatile here
     //UNNECESSARY HERE: Interval is a single byte and is therefore already atomic 
     // ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     // {
-      Interval=Time_Stamp[i]-Time_Stamp[i-1];
+      interval=Time_Stamp[i]-Time_Stamp[i-1];
     // }
-    if(Interval>50 || Interval<10) continue;//ignore extraneous results where freq is outside the 20~100kHz range
+    if(interval>50 || interval<10) continue;//ignore extraneous results where freq is outside the 20~100kHz range
                                             //Note: 1/50us = 20kHz; 1/10us = 100khz
-    Sum+=Interval;//accumulate usable intervals
-    Samples++;    //account usable intervals
+    sum+=interval;//accumulate usable intervals
+    samples++;    //account usable intervals
   };
-  if(Sum)
-    Results=(double)Samples/(double)Sum*1000; //kHz
+  if(sum)
+    results=(double)samples/(double)sum*1000; //kHz
   else
-    Results= 0.0;
+    results= 0.0;
  };
  
 //Didn't need to be a method that we made one following example of IRrecvBase
@@ -1064,24 +1090,24 @@ unsigned char IRfrequency::getPinNum(void) {
   return pin;
 }
 
-void IRfrequency::DumpResults(bool Detail) {
-  ComputeFreq();
+void IRfrequency::dumpResults(bool Detail) {
+  computeFreq();
 #ifdef USE_DUMP
-  Serial.print(F("Number of samples:")); Serial.print(Samples,DEC);
-  Serial.print(F("\t  Total interval (us):")); Serial.println(Sum,DEC); 
-  Serial.print(F("Avg. interval(us):")); Serial.print(1.0*Sum/Samples,2);
-  Serial.print(F("\t Aprx. Frequency(kHz):")); Serial.print(Results,2);
-  Serial.print(F(" (")); Serial.print(int(Results+0.5),DEC);
+  Serial.print(F("Number of samples:")); Serial.print(samples,DEC);
+  Serial.print(F("\t  Total interval (us):")); Serial.println(sum,DEC); 
+  Serial.print(F("Avg. interval(us):")); Serial.print(1.0*sum/samples,2);
+  Serial.print(F("\t Aprx. Frequency(kHz):")); Serial.print(results,2);
+  Serial.print(F(" (")); Serial.print(int(results+0.5),DEC);
   Serial.println(F(")"));
   if(Detail) {
     for(i=1; i<256; i++) {
-      unsigned int Interval;
+      unsigned int interval;
       //ensure atomic access to volatile variables; Time_Stamp is volatile 
       ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
       {
-        Interval=Time_Stamp[i]-Time_Stamp[i-1];
+        interval=Time_Stamp[i]-Time_Stamp[i-1];
       }
-      Serial.print(Interval,DEC); Serial.print("\t");
+      Serial.print(interval,DEC); Serial.print("\t");
       if ((i % 4)==0)Serial.print(F("\t "));
       if ((i % 8)==0)Serial.println();
       if ((i % 32)==0)Serial.println();
@@ -1150,7 +1176,7 @@ void IRfrequency::DumpResults(bool Detail) {
  * doesn't do any output, this method will ensure that your output pin is low
  * and doesn't turn on your IR LED or any output circuit.
  */
-void IRrecvBase::No_Output (void) {
+void IRrecvBase::noIROutput (void) {
 #if defined(IR_SEND_PWM_PIN)
  pinMode(IR_SEND_PWM_PIN, OUTPUT);  
  digitalWrite(IR_SEND_PWM_PIN, LOW); // When not sending PWM, we want it low    
@@ -1204,10 +1230,10 @@ void do_Blink(bool blinkState) {
  * The original IRrecv which uses 50us timer driven interrupts to sample input pin.
  */
 void IRrecv::resume() {
-  // initialize state machine variables
   //ensure atomic access to volatile variables 
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
   {
+    //initialize state machine variables
     irparams.rcvstate = STATE_IDLE;
   }
   IRrecvBase::resume();
@@ -1215,14 +1241,15 @@ void IRrecv::resume() {
 
 void IRrecv::enableIRIn(void) {
   IRrecvBase::enableIRIn();
-  // setup pulse clock timer interrupt
-  cli();
-  IR_RECV_CONFIG_TICKS();
-  IR_RECV_ENABLE_INTR;
-  sei();
+  //set up pulse clock timer interrupt
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+  {
+    IR_RECV_CONFIG_TICKS();
+    IR_RECV_ENABLE_INTR;
+  }
 }
 
-bool IRrecv::GetResults(IRdecodeBase *decoder) {
+bool IRrecv::getResults(IRdecodeBase *decoder) {
   rcvstate_t rcvstate;
   //ensure atomic access to volatile variables 
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -1231,7 +1258,7 @@ bool IRrecv::GetResults(IRdecodeBase *decoder) {
   } 
   if (rcvstate != STATE_STOP) return false;
   //else:
-  IRrecvBase::GetResults(decoder,USECPERTICK);
+  IRrecvBase::getResults(decoder,USECPERTICK);
   return true;
 }
 

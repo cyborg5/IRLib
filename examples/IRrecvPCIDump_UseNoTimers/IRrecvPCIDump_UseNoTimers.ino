@@ -38,7 +38,7 @@
 const byte EXT_INTERRUPT_NUMBER = 0; //Pin 2 for ATmega328-based boards, like the Uno
 IRrecvPCI My_Receiver(EXT_INTERRUPT_NUMBER);
 
-unsigned int Buffer[RAWBUF]; ///////////////////////////NB: you MUST use this external buffer if you want to resume the receiver before 
+// unsigned int Buffer[RAWBUF]; ///////////////////////////NB: you MUST use this external buffer if you want to resume the receiver before 
                              //decoding. Otherwise, you must decode and *then* resume. Search IRLib.cpp for 
                              //"external buffer" for more info.
 IRdecode My_Decoder;
@@ -48,7 +48,7 @@ void setup()
   Serial.begin(115200);
   Serial.println(F("begin"));
   delay(2000);while(!Serial);//delay for Leonardo
-  My_Decoder.UseExtnBuf(Buffer);
+  // My_Decoder.useDoubleBuffer(Buffer);
   //Try different values here for Mark_Excess. 50us is a good starting guess. See detailed notes above for more info.
   My_Receiver.Mark_Excess=50; //us; mark/space correction factor
   // My_Receiver.blink13(true); //blinks whichever LED is connected to LED_BUILTIN on your board, usually pin 13
@@ -58,7 +58,7 @@ void setup()
 }
 
 void loop() {
-  if (My_Receiver.GetResults(&My_Decoder)) {
+  if (My_Receiver.getResults(&My_Decoder)) {
     //Restart the receiver so it can be capturing another code while we are working on decoding this one.
     //NB: you are ONLY allowed to resume before decoding if you are using an external buffer. See note above.
     // My_Receiver.resume(); 
@@ -71,6 +71,7 @@ void loop() {
     // Serial.println();
     
     //FOR EXTENSIVE OUTPUT:
-    My_Decoder.DumpResults();
+    My_Decoder.dumpResults();
+    My_Receiver.resume(); //for single buffer use; do NOT resume until AFTER done calling all decoder functions that use the last data acquired, such as decode and dumpResults 
   }
 }

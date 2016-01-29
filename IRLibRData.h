@@ -57,24 +57,24 @@ typedef struct {
   2) Secondary Buffer = rawbuf2 - this buffer is accessed directly by the ISR, storing new data into it as data comes in 
   
   Double-buffer Notes:
-  -The user enables double-buffered data by passing in an external buffer through the decoder's IRdecodeBase::UseExtnBuf method 
-  --When you call IRdecodeBase::UseExtnBuf, rawbuf2 will be assigned to point to the external buffer passed in.
+  -The user enables double-buffered data by passing in an external buffer through the decoder's IRdecodeBase::useDoubleBuffer method 
+  --When you call IRdecodeBase::useDoubleBuffer, rawbuf2 will be assigned to point to the external buffer passed in.
   -The ISR will always store data directly into rawbuf2 
   -When using only *one* buffer (double-buffer not enabled), rawbuf2 will point to rawbuf1, therefore, the ISR is actually storing data directly into rawbuf1 
   -the decoder (IRdecodeBase) contains a "rawbuf" pointer; this pointer will *always* point to rawbuf1 (the *internal* buffer), NOT rawbuf2 (the *external* buffer)
-  --therefore, when IRdecodeBase::UseExtnBuf has been called, its rawbuf points to rawbuf1, which is *different* from rawbuf2; when UseExtnBuf has NOT been called, its rawbuf points to rawbuf1, which is the same as rawbuf2 since rawbuf2 will in this case point to rawbuf1 
-  -when IRrecvBase::GetResults manipulates the buffer, keep in mind that irparams.rawbuf1 is the *same buffer* as decoder->rawbuf, so these two ways to access the buffer are interchangeable 
+  --therefore, when IRdecodeBase::useDoubleBuffer has been called, its rawbuf points to rawbuf1, which is *different* from rawbuf2; when useDoubleBuffer has NOT been called, its rawbuf points to rawbuf1, which is the same as rawbuf2 since rawbuf2 will in this case point to rawbuf1 
+  -when IRrecvBase::getResults manipulates the buffer, keep in mind that irparams.rawbuf1 is the *same buffer* as decoder->rawbuf, so these two ways to access the buffer are interchangeable 
   */
   
   unsigned int rawbuf1[RAWBUF]; //raw data (time periods) for Marks (IR receiver output LOW), and Spaces (IR receiver output HIGH)
   unsigned char rawlen1; //counter of entries in rawbuf1
   
   //extra variables used by IRrecvPCI & other ISR-based IRrecv'ers (for double-buffered data --> no missed incoming signals): 
-  bool doubleBuffered; //true if an external buffer has been passed in to IRdecodeBase::UseExtnBuf, false otherwise 
+  bool doubleBuffered; //true if an external buffer has been passed in to IRdecodeBase::useDoubleBuffer, false otherwise 
   bool pauseISR; //set to true to cause the ISR to *not* store new, incoming IR data, until the previous data is decoded; this is necessary only when running single-buffered (ie: when doubleBuffered==false);
-  volatile unsigned int* volatile rawbuf2; //GS added; a volatile pointer to volatile data--an extra buffer; this will become the *secondary* buffer, written do by the IRrecvPCI ISR, for example, while rawbuf1 will remain the *primary* buffer, accessed directly during decoding. This pointer will point to an external buffer that the user must create in their main sketch for use with IRrecvPCI; the user will pass this buffer in via the IRdecodeBase::UseExtnBuf method. 
+  volatile unsigned int* volatile rawbuf2; //GS added; a volatile pointer to volatile data--an extra buffer; this will become the *secondary* buffer, written do by the IRrecvPCI ISR, for example, while rawbuf1 will remain the *primary* buffer, accessed directly during decoding. This pointer will point to an external buffer that the user must create in their main sketch for use with IRrecvPCI; the user will pass this buffer in via the IRdecodeBase::useDoubleBuffer method. 
   unsigned char rawlen2; //corresponds to the length of rawbuf2, above; used by IRrecvPCI when double-buffered 
-  bool dataStateChangedToReady; //GS added; IR code buffer *change* state: true if dataStateIsReady (found inside checkForEndOfIRCode()) just made a transition from false to true; false otherwise. This may seem redundant, but it is not. dataStateIsReady indicates the present state, dataStateChangedToReady indicates state transitions. We only want My_Receiver.GetResults to return true if the data state *transitioned* from false to true (ie: dataStateChangedToReady==true), so that we only decode a given set of data once. If GetResults returned true just because dataStateIsready==true, then if you rapidly called GetResults again and again it would keep wasting time decoding and returning the same set of data again and again, rather than decoding and returning each set of data only *once.* 
+  bool dataStateChangedToReady; //GS added; IR code buffer *change* state: true if dataStateIsReady (found inside checkForEndOfIRCode()) just made a transition from false to true; false otherwise. This may seem redundant, but it is not. dataStateIsReady indicates the present state, dataStateChangedToReady indicates state transitions. We only want My_Receiver.getResults to return true if the data state *transitioned* from false to true (ie: dataStateChangedToReady==true), so that we only decode a given set of data once. If getResults returned true just because dataStateIsready==true, then if you rapidly called getResults again and again it would keep wasting time decoding and returning the same set of data again and again, rather than decoding and returning each set of data only *once.* 
   
   //for LED blinking 
   uint8_t LEDpinNum;

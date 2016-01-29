@@ -37,19 +37,19 @@ void setup()
 {
   Serial.begin(9600);
   delay(2000);while(!Serial);//delay for Leonardo
-  My_Decoder.UseExtnBuf(Buffer);
+  My_Decoder.useDoubleBuffer(Buffer);
   //Try different values here for Mark_Excess. 50us is a good starting guess. See detailed notes above for more info.
   My_Receiver.Mark_Excess=50; //us; mark/space correction factor
   My_Receiver.enableIRIn(); // Start the receiver
 }
 
 void loop() {
-  if (My_Receiver.GetResults(&My_Decoder)) {
+  if (My_Receiver.getResults(&My_Decoder)) {
     //Restart the receiver so it can be capturing another code while we are working on decoding this one.
     //NB: you are ONLY allowed to resume before decoding if you are using an external buffer. See note above.
     My_Receiver.resume(); 
     My_Decoder.decode();
-    My_Decoder.DumpResults();
+    My_Decoder.dumpResults();
   }
 }
 

@@ -88,7 +88,7 @@ public:
   IRTYPES decode_type;           // NEC, SONY, RC5, UNKNOWN etc.
   unsigned long value;           // Decoded value
   unsigned char bits;            // Number of bits in decoded value
-  volatile unsigned int *rawbuf; // Raw intervals in microseconds
+  volatile unsigned int *rawbuf; // Raw intervals in microseconds; GS: now ALWAYS points to irparams.rawbuf1 
   unsigned char rawlen;          // Number of records in rawbuf.
   bool IgnoreHeader;             // Relaxed header detection allows AGC to settle
   virtual void Reset(void);      // Initializes the decoder
@@ -325,8 +325,7 @@ class IRrecvPCI: public IRrecvBase
 {
 public:
   //Note this is interrupt number not pin number
-  //GS note: since IRrecvPCI has to be double-buffered now, you *must* pass in a pointer to a buffer, which becomes the primary buffer while irparams.rawbuf becomes the secondary buffer 
-  IRrecvPCI(unsigned char inum, uint16_t *primaryBuffer);
+  IRrecvPCI(unsigned char inum);
   void enableIRIn(void);
   bool GetResults(IRdecodeBase *decoder);
 private:

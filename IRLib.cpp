@@ -259,35 +259,36 @@ void IRsend::send(IRTYPES Type, unsigned long data, unsigned int data2) {
  * creation of alternative receiver classes separate from the decoder classes.
  */
 IRdecodeBase::IRdecodeBase(void) {
-  rawbuf=(volatile unsigned int*)irparams.rawbuf;
+  rawbuf=(volatile unsigned int*)irparams.rawbuf1;
   IgnoreHeader=false;
   Reset();
 };
 
 /*
  * Use External Buffer:
- * NB: Normally the decoder uses irparams.rawbuf but if you want to resume receiving while
- * still decoding you can define a separate buffer and pass the address here. 
- * Then IRrecvBase::GetResults will copy the raw values from its buffer to yours allowing you to
- * call IRrecvBase::resume immediately before you call decode. See IRrecvBase::GetResults for more info.
- * GS note: Do NOT use/call this function on your decoder object when using an IRrecvPCI object 
+ * NB: The ISR always stores data directly into irparams.rawbuf2, which is *normally* the same buffer
+ * as irparams.rawbuf1. However, if you want to use a double-buffer so you can continue to receive
+ * new data while decoding the previous IR code, then you can define a separate buffer in your 
+ * Arduino sketch and and pass the address here. 
+ * See IRrecvBase::GetResults, and the extensive buffer notes in IRLibRData.h, for more info.
  */
-void IRdecodeBase::UseExtnBuf(void *P){
-  rawbuf = (volatile unsigned int*)P;
+void IRdecodeBase::UseExtnBuf(void *p_buffer){
+  rawbuf = irparams//////////////(volatile unsigned int*)p_buffer;
 };
 
+//GS note: 29 Jan 2016: DEPRECATED: copyBuf no longer necessary since the decoder's rawbuf is now the *same buffer* as irparams.rawbuf1. IRhashdecode will be updated to work without copyBuf. 
 /*
  * Copies rawbuf and rawlen from one decoder to another. See IRhashdecode example
  * for usage.
  */
-void IRdecodeBase::copyBuf (IRdecodeBase *source){
+/* void IRdecodeBase::copyBuf (IRdecodeBase *source){
   //ensure atomic access in case you are NOT using an external buffer, in which case rawbuf is volatile 
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
   {
-    memcpy((void *)rawbuf,(const void *)source->rawbuf,sizeof(irparams.rawbuf));
+    memcpy((void *)rawbuf,(const void *)source->rawbuf,sizeof(irparams.rawbuf1));
   }
   rawlen=source->rawlen;
-};
+}; */
 
 /*
  * This routine is actually quite useful. Allows extended classes to call their parent
@@ -319,14 +320,14 @@ void IRdecodeBase::DumpResults(void) {
   };
   Serial.print(F(" ("));  Serial.print(bits, DEC); Serial.println(F(" bits)"));
   Serial.print(F("Raw samples(")); Serial.print(rawlen, DEC);
-  Serial.print(F("): Gap:")); Serial.println(rawbuf[0], DEC);
-  Serial.print(F("  Head: m")); Serial.print(rawbuf[1], DEC);
-  Serial.print(F("  s")); Serial.println(rawbuf[2], DEC);
+  Serial.print(F("): Gap:")); Serial.println(rawbuf1[0], DEC);
+  Serial.print(F("  Head: m")); Serial.print(rawbuf1[1], DEC);
+  Serial.print(F("  s")); Serial.println(rawbuf1[2], DEC);
   int LowSpace= 32767; int LowMark=  32767;
   int HiSpace=0; int HiMark=  0;
-  Extent=rawbuf[1]+rawbuf[2];
+  Extent=rawbuf1[1]+rawbuf1[2];
   for (i = 3; i < rawlen; i++) {
-    Extent+=(interval= rawbuf[i]);
+    Extent+=(interval= rawbuf1[i]);
     if (i % 2) {
       LowMark=min(LowMark, interval);  HiMark=max(HiMark, interval);
       Serial.print(i/2-1,DEC);  Serial.print(F(":m"));
@@ -367,22 +368,22 @@ bool IRdecodeBase::decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark
   if (Raw_Count) {if (rawlen != Raw_Count) return RAW_COUNT_ERROR;}
   if(!IgnoreHeader) {
     if (Head_Mark) {
-	  if (!MATCH(rawbuf[offset],Head_Mark)) return HEADER_MARK_ERROR(Head_Mark);
+	  if (!MATCH(rawbuf1[offset],Head_Mark)) return HEADER_MARK_ERROR(Head_Mark);
 	}
   }
   offset++;
-  if (Head_Space) {if (!MATCH(rawbuf[offset],Head_Space)) return HEADER_SPACE_ERROR(Head_Space);}
+  if (Head_Space) {if (!MATCH(rawbuf1[offset],Head_Space)) return HEADER_SPACE_ERROR(Head_Space);}
 
   if (Mark_One) {//Length of a mark indicates data "0" or "1". Space_Zero is ignored.
     offset=2;//skip initial gap plus header Mark.
     Max=rawlen;
     while (offset < Max) {
-      if (!MATCH(rawbuf[offset], Space_One)) return DATA_SPACE_ERROR(Space_One);
+      if (!MATCH(rawbuf1[offset], Space_One)) return DATA_SPACE_ERROR(Space_One);
       offset++;
-      if (MATCH(rawbuf[offset], Mark_One)) {
+      if (MATCH(rawbuf1[offset], Mark_One)) {
         data = (data << 1) | 1;
       } 
-      else if (MATCH(rawbuf[offset], Mark_Zero)) {
+      else if (MATCH(rawbuf1[offset], Mark_Zero)) {
         data <<= 1;
       } 
       else return DATA_MARK_ERROR(Mark_Zero);
@@ -394,12 +395,12 @@ bool IRdecodeBase::decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark
     Max=rawlen-1; //ignore stop bit
     offset=3;//skip initial gap plus two header items
     while (offset < Max) {
-      if (!MATCH (rawbuf[offset],Mark_Zero)) return DATA_MARK_ERROR(Mark_Zero);
+      if (!MATCH (rawbuf1[offset],Mark_Zero)) return DATA_MARK_ERROR(Mark_Zero);
       offset++;
-      if (MATCH(rawbuf[offset],Space_One)) {
+      if (MATCH(rawbuf1[offset],Space_One)) {
         data = (data << 1) | 1;
       } 
-      else if (MATCH (rawbuf[offset],Space_Zero)) {
+      else if (MATCH (rawbuf1[offset],Space_Zero)) {
         data <<= 1;
       } 
       else return DATA_SPACE_ERROR(Space_Zero);
@@ -714,8 +715,8 @@ unsigned char IRrecvBase::getPinNum(void){
 
 /* Any receiver class must implement a GetResults method that will return true when a complete code
  * has been received. At a successful end of your GetResults code you should then call IRrecvBase::GetResults
- * and it will copy the data from the receiver structures into your decoder. Some receivers
- * provide results in rawbuf measured in ticks on some number of microseconds while others
+ * and it will manipulate the data inside irparams.rawbuf1 (same as decoder.rawbuf). Some receivers
+ * provide results in rawbuf1 measured in ticks on some number of microseconds while others
  * return results in actual microseconds. If you use ticks then you should pass a multiplier
  * value in Time_per_Ticks.
  */
@@ -738,7 +739,8 @@ bool IRrecvBase::GetResults(IRdecodeBase *decoder, const unsigned int Time_per_T
     for(unsigned char i=0; i<irparams.rawlen; i++) 
     {
       //Note: even indices are marks, odd indices are spaces. Subtract Mark_Exces from marks and add it to spaces.
-      decoder->rawbuf[i]=irparams.rawbuf[i]*Time_per_Tick + ( (i % 2)? -Mark_Excess:Mark_Excess);
+      //-GS UPDATE 29 Jan 2016: decoder->rawbuf now points to the *same buffer* as irparams.rawbuf1 
+      decoder->rawbuf[i]=irparams.rawbuf1[i]*Time_per_Tick + ( (i % 2)? -Mark_Excess:Mark_Excess);
     }
   }
   return true;
@@ -781,7 +783,7 @@ bool IRrecvLoop::GetResults(IRdecodeBase *decoder) {
     }
     if(Finished) break;
 	do_Blink(!NewState);
-    irparams.rawbuf[irparams.rawlen++]=DeltaTime;
+    irparams.rawbuf1[irparams.rawlen++]=DeltaTime;
     OldState=NewState;StartTime=EndTime;
   };
   IRrecvBase::GetResults(decoder);
@@ -799,10 +801,9 @@ bool IRrecvLoop::GetResults(IRdecodeBase *decoder) {
  * assistance in developing this section of code.
  */
 
-IRrecvPCI::IRrecvPCI(unsigned char inum, uint16_t *primaryBufferIn) {
+IRrecvPCI::IRrecvPCI(unsigned char inum) {
   Init();
   intrnum=inum;
-  irparams.rawbuf2=primaryBufferIn; 
   irparams.recvpin=Pin_from_Intr(inum);
 }
 
@@ -852,7 +853,7 @@ bool checkForEndOfIRCode(bool pinState, unsigned long dt, byte whoIsCalling)
       
       //copy buffer from primary (rawlen2) to secondary (rawlen) buffer; the secondary buffer will be waiting for the user to decode it, while the primary buffer will be written in by this ISR as any new data comes in 
       for(unsigned char i=0; i<irparams.rawlen2; i++) 
-        irparams.rawbuf[i] = irparams.rawbuf2[i];
+        irparams.rawbuf1[i] = irparams.rawbuf2[i];
       irparams.rawlen = irparams.rawlen2;
       irparams.rawlen2 = 0; //start of a new IR code 
     }
@@ -870,17 +871,16 @@ bool checkForEndOfIRCode(bool pinState, unsigned long dt, byte whoIsCalling)
 //Pin Change Interrupt handler/ISR 
 //Completely rewritten by Gabriel Staples (www.ElectricRCAircraftGuy.com) on 26 Jan 2016
 //-no state machine is used for this ISR anymore 
-//-raw codes are double-buffered, so raw code values are continually received, and never ignored, 
+//-raw codes are optionally double-buffered, in which case raw code values are continually received, and never ignored, 
 // even if the user has never called GetResults, or has not called it in a long time 
-//-the primary buffer is rawbuf2; a *pointer* to it is stored in irparams, and it is what 
+//-the secondary buffer is rawbuf2; a *pointer* to it is stored in irparams, and it is what 
 // is used by the ISR to continually store new IR Mark and Space raw values as they come in.
-//--the primary buffer must be *externally created* by the user in their Arduino sketch,
-//  and only a *pointer* to it is passed in to irparams; this is done when the user passes in
-//  a pointer to the buffer during the creation of the IRrecvPCI object. Refer to the 
+//--the secondary buffer must be *externally created* by the user in their Arduino sketch,
+//  and only a *pointer* to it is passed in to irparams; Refer to the 
 //  example sketch called "IRrecvPCIDump_UseNoTimers.ino" for an example.
-//-the secondary buffer is rawbuf; it is stored in irparams and passed to the decode 
+//-the primary buffer is rawbuf1; it is stored in irparams and passed to the decode 
 // routines whenever a full sequence is ready to be decoded, and the user calls GetResults.
-//-The ISR automatically copies the primary buffer (rawbuf2) to the secondary buffer (rawbuf)
+//-The ISR automatically copies the secondary buffer (rawbuf2) to the primary buffer (rawbuf1)
 // whenever a full IR code has been received, which is noted by a long space (HIGH pd
 // on the IR receiver output pin) of >10ms. 
 //---------------------------------------------------------------------------------------
@@ -1215,7 +1215,7 @@ bool IRrecv::GetResults(IRdecodeBase *decoder) {
 /*
  * This interrupt service routine is only used by IRrecv and may or may not be used by other
  * extensions of the IRrecBase. It is timer driven interrupt code to collect raw data.
- * Widths of alternating SPACE, MARK are recorded in rawbuf. Recorded in ticks of 50 microseconds.
+ * Widths of alternating SPACE, MARK are recorded in rawbuf2. Recorded in ticks of 50 microseconds.
  * rawlen counts the number of entries recorded so far. First entry is the SPACE between transmissions.
  * As soon as a SPACE gets long, ready is set, state switches to IDLE, timing of SPACE continues.
  * As soon as first MARK arrives, gap width is recorded, ready is cleared, and new logging starts.
@@ -1239,7 +1239,7 @@ ISR(IR_RECV_INTR_NAME)
       else {
         // gap just ended, record duration and start recording transmission
         irparams.rawlen = 0;
-        irparams.rawbuf[irparams.rawlen++] = irparams.timer;
+        irparams.rawbuf2[irparams.rawlen++] = irparams.timer;
         irparams.timer = 0;
         irparams.rcvstate = STATE_MARK;
       }
@@ -1247,14 +1247,14 @@ ISR(IR_RECV_INTR_NAME)
     break;
   case STATE_MARK: // timing MARK
     if (irdata == IR_SPACE) {   // MARK ended, record time
-      irparams.rawbuf[irparams.rawlen++] = irparams.timer;
+      irparams.rawbuf2[irparams.rawlen++] = irparams.timer;
       irparams.timer = 0;
       irparams.rcvstate = STATE_SPACE;
     }
     break;
   case STATE_SPACE: // timing SPACE
     if (irdata == IR_MARK) { // SPACE just ended, record it
-      irparams.rawbuf[irparams.rawlen++] = irparams.timer;
+      irparams.rawbuf2[irparams.rawlen++] = irparams.timer;
       irparams.timer = 0;
       irparams.rcvstate = STATE_MARK;
     } 

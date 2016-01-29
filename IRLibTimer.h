@@ -323,7 +323,7 @@
 #endif
 
 //Defines for blinking the LED
-//DEPRECATED
+//DEPRECATED BY GS
 /* #if defined(CORE_LED0_PIN)
   #define BLINKLED       CORE_LED0_PIN
   #define BLINKLED_ON()  (digitalWrite(CORE_LED0_PIN, HIGH))

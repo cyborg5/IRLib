@@ -31,6 +31,7 @@
 #include "IRLib.h"
 #include "IRLibMatch.h"
 #include "IRLibRData.h"
+#include "IRLibTimer.h"
 #include <Arduino.h>
 #include <util/atomic.h> //for ATOMIC_BLOCK macro (source: http://www.nongnu.org/avr-libc/user-manual/group__util__atomic.html)
 
@@ -741,12 +742,7 @@ bool IRrecvBase::getResults(IRdecodeBase *decoder, const unsigned int Time_per_T
 /* Typically IR receivers over-report the length of a mark and under-report the length of a space.
  * This routine adjusts for that by subtracting Mark_Excess from recorded marks and
  * adding it to recorded spaces. The amount of adjustment used to be defined in IRLibMatch.h.
- * It is now user adjustable with the old default of 100;
- * NB: By copying the the values from irparams to decoder we can call IRrecvBase::resume 
- * immediately while decoding is still in progress, IF AND ONLY IF you are using an external buffer. 
- * See the function "IRdecodeBase::useDoubleBuffer" for more info. If you are not using an external buffer,
- * you must wait until decoding is complete before resuming, or else you risk over-writing the very data
- * you are trying to decode.
+ * It is now user adjustable with the old default of 100
  */
   //ensure atomic access to volatile variables; irparams is volatile  
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -764,7 +760,7 @@ bool IRrecvBase::getResults(IRdecodeBase *decoder, const unsigned int Time_per_T
 
 void IRrecvBase::enableIRIn(void) { 
   pinMode(irparams.recvpin, INPUT_PULLUP); //many IR receiver datasheets recommend a >10~20K pullup resistor from the output line to 5V; using INPUT_PULLUP does just that
-  resume(); //call the child class's resume function (ex: IRrecvPCI::resume)
+  resume(); //call the child (derived) class's resume function (ex: IRrecvPCI::resume)
 }
 
 //Note: one place resume is called is in IRrecvBase::enableIRIn
@@ -1165,26 +1161,6 @@ void IRfrequency::dumpResults(bool Detail) {
   }
 }
 
-// Provides ISR
-#include <avr/interrupt.h>
-// defines for setting and clearing register bits
-#ifndef cbi
-#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-#endif
-#ifndef sbi
-#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
-#endif
-#define CLKFUDGE 5      // fudge factor for clock interrupt overhead
-#ifdef F_CPU
-#define SYSCLOCK F_CPU     // main Arduino clock
-#else
-#define SYSCLOCK 16000000  // main Arduino clock
-#endif
-#define PRESCALE 8      // timer clock prescale
-#define CLKSPERUSEC (SYSCLOCK/PRESCALE/1000000)   // timer clocks per microsecond
-
-#include <IRLibTimer.h>
-
 /* 
  * This section contains the hardware specific portions of IRrecvBase
  */
@@ -1242,6 +1218,25 @@ void do_Blink(bool blinkState) {
 //===========================================================================================
 #ifdef USE_IRRECV
 //===========================================================================================
+
+//Defines for ISR for IRrecv 
+#include <avr/interrupt.h>
+//defines for setting and clearing register bits
+#ifndef cbi
+#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+#endif
+#ifndef sbi
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#endif
+#define CLKFUDGE 5      // fudge factor for clock interrupt overhead
+#ifdef F_CPU
+#define SYSCLOCK F_CPU     // main Arduino clock
+#else
+#define SYSCLOCK 16000000  // main Arduino clock
+#endif
+#define PRESCALE 8      // timer clock prescale
+#define CLKSPERUSEC (SYSCLOCK/PRESCALE/1000000)   // timer clocks per microsecond
+
 /*
  * The original IRrecv which uses 50us timer driven interrupts to sample input pin.
  */
@@ -1345,6 +1340,8 @@ ISR(IR_RECV_INTR_NAME)
   do_Blink(!(bool)irdata);
 }
 #endif //end of ifdef USE_IRRECV
+
+
 /*
  * The hardware specific portions of IRsendBase
  */

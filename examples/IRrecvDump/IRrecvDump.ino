@@ -8,8 +8,12 @@
  * http://www.righto.com/
  */
 /*
- * IRLib: IRrecvDump - dump details of IR codes with IRrecv
+ * IRLib: IRrecvDump - dump details of IR codes with IRrecv ("IR Receiver" based on 50us timer interrupts)
  * An IR detector/demodulator must be connected to the input RECV_PIN.
+ * 
+ * -TO SAVE PROGRAM SPACE: If not using either dumpResults methods of IRdecode nor IRfrequency you can
+ *  comment out the "#define USE_DUMP" line in IRLib.h, to save considerable program space.
+ * -See IRLib.h for more details, options, & info. 
  *
  * Notes on Mark_Excess:
  * Try different values here for Mark_Excess. 50us is a good starting guess. Ken Shirriff originally used 100us. 

@@ -45,12 +45,14 @@
  * Comment out the following define to eliminate the conflicts.
  */
 #define USE_IRRECV
+
 /* Similarly some other libraries have conflicts with the built in Arduino functions
  * "attachInterrupt()" and "detachInterrupt()" which are used by the IRrecvPCI and
  * IRfrequency classes. If you're not using either of those classes and get conflicts
  * related to INT0_vect then comment out the following line to eliminate the conflicts.
  */
- #define USE_ATTACH_INTERRUPTS
+#define USE_ATTACH_INTERRUPTS
+
 /* If not using either dumpResults methods of IRdecode nor IRfrequency you can
  * comment out the following define to eliminate considerable program space.
  */

@@ -67,8 +67,7 @@
 
 #define RAWBUF 100 // Length of raw duration buffer (cannot exceed 255); keep this define inside IRLib.h so the user can access it directly from their Arduino sketch
 
-//DEPRECATED: USE ENUM INSTEAD; ~GS
-/* typedef uint8_t IR_types_t; //formerly was an enum
+typedef uint8_t IR_types_t; //formerly was an enum
 #define UNKNOWN 0
 #define NEC 1
 #define SONY 2
@@ -77,10 +76,12 @@
 #define PANASONIC_OLD 5
 #define JVC 6
 #define NECX 7
-//#define ADDITIONAL (number) //make additional protocol 8 and change HASH_CODE to 9
+//Add additional protocols here; keep HASH_CODE & LAST_PROTOCOL always at the very end 
+//#define ADDITIONAL (number); make additional protocol 8 and change HASH_CODE to 9
 #define HASH_CODE 8
-#define LAST_PROTOCOL HASH_CODE */
+#define LAST_PROTOCOL HASH_CODE
 
+/*
 typedef enum 
 {
   UNKNOWN = 0,
@@ -95,6 +96,7 @@ typedef enum
   HASH_CODE,
   LAST_PROTOCOL = HASH_CODE
 } IR_types_t;
+*/
 
 const __FlashStringHelper *Pnames(IR_types_t Type); //Returns a character string that is name of protocol.
 
@@ -224,7 +226,7 @@ public:
 class IRsendSony: public virtual IRsendBase
 {
 public:
-  void send(unsigned long data, int nbits);
+  void send(unsigned long data, int nbits, bool send3times=true); //by default, automatically repeat the send code 3 times; this may want to be manually set to false, however, in the event you are sending custom IR digital data streams using the Sony protocol. ~GS
 };
 
 class IRsendRaw: public virtual IRsendBase
@@ -275,7 +277,7 @@ public virtual IRsendNECx
 // , public virtual IRsendADDITIONAL //add additional protocols here
 {
 public:
-  void send(IR_types_t Type, unsigned long data, unsigned int data2);
+  void send(IR_types_t Type, unsigned long data, unsigned int data2, bool autoRepeatSend=true); //by default, automatically repeat the send command, if applicable: ex: for Sony, repeat the send code 3 times, per the standard; this may want to be manually set to false, however, in the event you are sending custom IR digital data streams using such protocols, in which case automatically sending each code repeatedly will corrupt the custom digital data stream being sent. ~GS
 };
 
 // Changed this to a base class so it can be extended

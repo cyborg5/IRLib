@@ -58,7 +58,7 @@ void loop() {
     //NB: you are ONLY allowed to resume before decoding if you are using an external buffer. See note above.
     My_Decoder.decode();
     My_Decoder.dumpResults();
-    My_Receiver.resume();
+    // My_Receiver.resume();
   }
   // Serial.println(F("test"));
 }

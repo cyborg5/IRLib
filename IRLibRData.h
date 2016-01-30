@@ -39,14 +39,14 @@
  * the provided IRrecv class.
  */
 
-// receiver states
-enum rcvstate_t {STATE_IDLE, STATE_MARK, STATE_SPACE, STATE_STOP};
+//IRrecv Receiver States
+enum rcvstate_t {STATE_START, STATE_TIMING_MARK, STATE_TIMING_SPACE};
 
 // information for the interrupt handlers (ISRs)
 typedef struct {
   unsigned char recvpin;    // pin for IR data from detector
   rcvstate_t rcvstate;       // state machine
-  unsigned long timer;     // state timer, counts 50uS ticks.(and other uses); for IRrecvPCI, this is the last time stamp (us) when a Mark or Space edge occurred 
+  unsigned long timer;     // state timer, counts 50uS ticks.(and other uses); for IRrecvPCI, this is the last time stamp (in us) when a Mark or Space edge occurred 
   
   /*
   Buffers:
@@ -69,7 +69,7 @@ typedef struct {
   unsigned int rawbuf1[RAWBUF]; //raw data (time periods) for Marks (IR receiver output LOW), and Spaces (IR receiver output HIGH)
   unsigned char rawlen1; //counter of entries in rawbuf1
   
-  //extra variables used by IRrecvPCI & other ISR-based IRrecv'ers (for double-buffered data --> no missed incoming signals): 
+  //extra variables used by ISR-based receivers, such as IRrecvPCI & IRrecv (for double-buffered data --> no missed incoming signals): 
   bool doubleBuffered; //true if an external buffer has been passed in to IRdecodeBase::useDoubleBuffer, false otherwise 
   bool pauseISR; //set to true to cause the ISR to *not* store new, incoming IR data, until the previous data is decoded; this is necessary only when running single-buffered (ie: when doubleBuffered==false);
   bool interruptIsDetached; //true if the ISR's interrupt handler is detached; ie: the interrupt is no longer occurring at all

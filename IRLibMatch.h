@@ -51,7 +51,8 @@
 #define PERCENT_TOLERANCE 25  // percent tolerance in measurements
 #define DEFAULT_ABS_TOLERANCE 75 //absolute tolerance in microseconds
 #define MINIMUM_TIME_GAP_PERMITTED 100 //us; minimum Mark or Space period permitted; GS: for use in IRrecvPCI: if a Mark or Space is less than this value I will filter it out, as if it never occurred.
-///////////////#define _GAP 5000
+#define GAP_US 7800 //us; minimum long Space (IR receiver HIGH time) between IR transmissions; NB: GS note: this value should be >= ~1.25 * the_largest_space_any_valid_IR_protocol_might_have. The largest Space in any valid IR protocol that I can find is 6200us for "DISH_RPT_SPACE" in the Dish protocol (see IRremote library, ir_Dish.cpp). 1.25 * 6200 = 7750us, so 7800us is a good value to choose.
+#define GAP_TICKS (GAP_US/USECPERTICK)
 
 /* 
  * These revised MATCH routines allow you to use either percentage or absolute tolerances.

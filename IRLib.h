@@ -313,6 +313,7 @@ public:
   IRrecv(unsigned char recvpin):IRrecvBase(recvpin){};
   bool getResults(IRdecodeBase *decoder);
   void enableIRIn(void);
+  void detachInterrupt(); //disable the ISR so that it will no longer interrupt the code 
   void resume(void);
 };
 #endif

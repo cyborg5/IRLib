@@ -1,7 +1,9 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
  * Version 1.60, January 2016
- * Library Copyright 2014-2016 by Chris Young http://cyborg5.com
- * This example written by Gabriel Staples -- http://www.ElectricRCAircraftGuy.com -- Copyright 2016, after doing a major rewrite of IRrecvPCI, and its associated Interrupt Service Routine (ISR) & buffers
+ * Library: Copyright 2014-2016 by Chris Young http://cyborg5.com
+ * This example: Copyright 2016 by Gabriel Staples -- http://www.ElectricRCAircraftGuy.com 
+ * -written after doing a major rewrite of IRrecvPCI & IRrecv, and their associated Interrupt 
+ * Service Routines (ISRs), buffers, & support functions 
  * 
  * Based on original example sketch for IRremuote library 
  * Version 0.11 September, 2009

@@ -791,7 +791,7 @@ void IRrecvBase::resume() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
   {  
     irparams.rawlen1 = irparams.rawlen2 = 0;
-    irparams.dataStateChangedToReady = false; //initialize, for use by IRrecvPCI 
+    irparams.dataStateChangedToReady = false; //initialize, for use by IRrecv & IRrecvPCI 
   }
 }
 
@@ -888,7 +888,7 @@ bool checkForEndOfIRCode(bool pinState, unsigned long dt, byte whoIsCalling)
         irparams.dataStateChangedToReady = true; //used to notify the user that data state just changed to ready, next time the user calls getResults
       else if (whoIsCalling==CALLED_BY_USER)
         irparams.dataStateChangedToReady = false; //this whole function will return true, but since the user is reading this now (calling this whole function from within getResults), and can choose to act on it to decode the data now, it gets immediately reset back to false; otherwise, the user would accidentally try to decode the same data more than once simply by repeatedly calling getResults rapidly. 
-      
+
       if (irparams.doubleBuffered==true)
       {
         //copy buffer from secondary (rawlen2) to primary (rawlen1); the primary buffer will be waiting for the user to decode it, while the secondary buffer will be written in by this ISR as any new data comes in; see buffer notes in IRLibRData.h for much more info.
@@ -983,7 +983,36 @@ void IRrecvPCI::enableIRIn(void) {
 //---------------------------------------------------------------------------------------
 bool IRrecvPCI::getResults(IRdecodeBase *decoder) 
 {
-
+  bool newDataJustIn = false; 
+  
+  //Order is VERY important here; I'm doing everything in this order for a reason. ~GS:
+  //1) first, check to see if irparams.dataStateChangedToReady==true, so we don't needlessly call checkForEndOfIRCode() if data is already ready 
+  if (irparams.dataStateChangedToReady==true) //variable is a singe byte; already atomic; atomic guards not needed 
+  {
+    newDataJustIn = true;
+    irparams.dataStateChangedToReady = false; //reset
+  }
+  else //2) manually check for long Space at end of IR code
+  {
+    //ensure atomic access to volatile variables
+    //-NB: as a MINIMUM, all calcs for dt, *and* the entire checkForEndOfIRCode function call, must be inside the ATOMIC_BLOCK
+    //-Note: since digitalRead is slow, I'd like to keep it *outside* the ATOMIC_BLOCK, *if possible*. Here, it *is* possible. Let's consider a case where a pin change interrupt occurs after reading the pinState: I read pinState, an interrupt occurs (pinState changes), I enter the ATOMIC_BLOCK, calculdate dt, and pass in the WRONG pinState but the RIGHT dt to the checkForEndOfIRCode function. What will happen?
+    //--Answer: the ISR would have already correctly processed the whole thing, and since checkForEndOfIRCode checks pinState *and* dt, so long as one of those is correct, the same IR code data won't be accidentally processed twice. We should be ok. In this scenario, the dt calcs, *and* the checkForEndOfIRCode, however, *MUST* be inside the *same* ATOMIC_BLOCK for everything to work right. That's why I have done that below.
+    bool pinState = digitalRead(irparams.recvpin); //already atomic since irparams.recvpin is one byte 
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+      unsigned long dt = micros() - irparams.timer; //us since last edge; note: irparams.timer contains the last time stamp for a Mark or Space edge 
+      newDataJustIn = checkForEndOfIRCode(pinState,dt,CALLED_BY_USER);
+    }
+  }
+  //3) if new data is ready, process it 
+  if (newDataJustIn==true)
+    IRrecvBase::getResults(decoder); //mandatory to call whenever a new IR data packet is ready to be decoded; this copies volatile data from the secondary buffer into the decoder, while subtracting Mark_Exces from Marks, and adding it to Spaces, among other things
+  //4) detach the interrupt if the ISR is paused (the ISR will automatically set the pauseISR flat to true to pause itself whenever a full IR code comes in if it is single-buffered instead of double-buffered)
+  if (irparams.pauseISR==true) //note: pauseISR is a single byte and already atomic; no atomic guards needed 
+    this->detachInterrupt();
+    
+  return newDataJustIn;
 };
 
 //---------------------------------------------------------------------------------------
@@ -1218,26 +1247,36 @@ void do_Blink(bool blinkState) {
 /*
  * The original IRrecv which uses 50us timer driven interrupts to sample input pin.
  */
-void IRrecv::resume() {
-  //ensure atomic access to volatile variables 
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+
+//---------------------------------------------------------------------------------------
+//IRrecv::resume 
+//By Gabriel Staples (www.ElectricRCAircraftGuy.com) on 30 Jan 2016
+//-resume data collection 
+//-this function should be called by the user in only 2 cases:
+//--1) when using a single (not double) buffer, you need to resume after you are done calling any decoder functions you need, such as decode or dumpResults
+//--2) to manually resume IR receives after the you have manually paused them by calling the receiver's detachInterrupt() function; this applies whether single OR double-buffered 
+//---------------------------------------------------------------------------------------
+void IRrecv::resume() {  
+  //note: atomic guards not needed for single-byte volatile variables 
+  if (irparams.interruptIsDetached==true) //Note: interruptIsDetached will *always* be true if either A) we are single-buffered, the ISR set pauseISR to true, and then the user called getResults, or B) the user called the IRrecv::detachInterrupt function directly. We ONLY want to do all this stuff if one of the above events happened. Otherwise, we want to NOT do the following things, such as in the event we are double-buffered, but the user accidentally called resume() anyway, which they should not do.
   {
+    irparams.pauseISR = false; //already atomic--no atomic guards required; re-allow ISR data collection
+    //set up/re-attach External interrupt 
+    irparams.interruptIsDetached = false; //reset 
     //initialize state machine variables
-    irparams.rcvstate = STATE_START;
+    irparams.rcvstate = STATE_START; //atomic since interrupt isn't enabled yet until the next line 
+    IR_RECV_ENABLE_INTR; //enable interrupt
+    IRrecvBase::resume(); //reset rawlen1 & 2 to 0, among other things 
   }
-  IRrecvBase::resume();
 }
 
 void IRrecv::enableIRIn(void) {
   IRrecvBase::enableIRIn();
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-  {
-    //set up pulse clock timer interrupt (ex: for every 50us)
-    IR_RECV_CONFIG_TICKS();
-    IR_RECV_ENABLE_INTR; //enable interrupt 
-  }
+  IR_RECV_CONFIG_TICKS(); //set up pulse clock timer interrupt (ex: for every 50us)
+  this->resume(); //interrupt is actually enabled here 
 }
 
+//Rewritten by Gabriel Staples (www.ElectricRCAircraftGuy.com) on 30 Jan 2016 
 bool IRrecv::getResults(IRdecodeBase *decoder) 
 {
   bool newDataJustIn = false;
@@ -1250,22 +1289,46 @@ bool IRrecv::getResults(IRdecodeBase *decoder)
     //2) 2nd, process the new data  
     IRrecvBase::getResults(decoder,USECPERTICK); //mandatory to call whenever a new IR data packet is ready to be decoded; this copies volatile data from the secondary buffer into the decoder, while subtracting Mark_Exces from Marks, and adding it to Spaces, among other things
   }
-/*   //3) detach the interrupt if the ISR is paused (the ISR will automatically set the pauseISR flag to true to pause itself whenever a full IR code comes in if it is single-buffered instead of double-buffered)
+  //3) detach the interrupt if the ISR is paused (the ISR will automatically set the pauseISR flag to true to pause itself whenever a full IR code comes in if it is single-buffered instead of double-buffered)
   if (irparams.pauseISR==true) //note: pauseISR is a single byte and already atomic; no atomic guards needed 
-    this->detachInterrupt(); */
+    this->detachInterrupt();
     
   return newDataJustIn;
 }
 
-/*////////////////////NEEDS UPDATING/////////////
- * This interrupt service routine is only used by IRrecv and may or may not be used by other
- * extensions of the IRrecvBase. It is timer driven interrupt code to collect raw data.
- * Widths of alternating SPACE, MARK are recorded in rawbuf2, recorded in ticks of 50 microseconds.
- * rawlen2 counts the number of entries recorded so far. First entry is the SPACE (IR receiver HIGH time)
- * between transmissions. As soon as a SPACE gets long, irparams.dataStateChangedToReadyready is set,
- * state switches to IDLE, timing of SPACE continues.
- * As soon as first MARK arrives, gap width is recorded, ready is cleared, and new logging starts.
- */
+//---------------------------------------------------------------------------------------
+//IRrecv::detachInterrupt
+//By Gabriel Staples (www.ElectricRCAircraftGuy.com) on 29 Jan 2016
+//-disable the ISR so that it will no longer interrupt the code 
+//---------------------------------------------------------------------------------------
+void IRrecv::detachInterrupt()
+{
+  IR_RECV_DISABLE_INTR;
+  irparams.interruptIsDetached = true;
+}
+
+//---------------------------------------------------------------------------------------
+//ISR for IRrecv 
+//Rewritten by Gabriel Staples (www.ElectricRCAircraftGuy.com) on 30 Jan 2016 
+//-reads in incoming IR data via this software Interrupt Service Routine which is called every
+// 50us. 
+/*
+This interrupt service routine is only used by IRrecv and may or may not be used by other
+extensions of the IRrecvBase. It is timer driven interrupt code to collect raw data.
+Widths of alternating SPACE, MARK are recorded in rawbuf2, recorded in ticks of 50 microseconds.
+rawlen2 counts the number of entries recorded so far. First entry is the long gap SPACE 
+(IR receiver HIGH time) between transmissions. The state machine starts in STATE_START,
+then proceeds to STATE_TIMING_MARK to time an incoming MARK, followed by 
+STATE_TIMING_SPACE to time an incoming SPACE. These alternate until the long gap SPACE 
+between IR codes is found, at which point irparams.dataStateChangedToReadyready is set to
+true, while the state machine returns back to STATE_START, and timing of this long 
+SPACE continues until STATE_START encounters the next MARK.
+Note that once irparams.dataStateChangedToReady is set to true, if single-buffered, 
+(see IRLibRData.h for more info on buffers), irparams.pauseISR is set to true until 
+the data is decoded, but if double-buffered, IR data receiving, processing, and storing 
+resume immediately.
+*/
+//---------------------------------------------------------------------------------------
 ISR(IR_RECV_INTR_NAME)
 {
   irparams.timer++; // One more 50us tick
@@ -1273,6 +1336,7 @@ ISR(IR_RECV_INTR_NAME)
   if (irparams.pauseISR==true) //if single-buffered only 
     return; //keep incrementing the timer (hence why it is above this), but don't analyse or store any new incoming IR data until the buffer is no longer in use, and the decoder is done using the buffer data is complete
   
+  enum irdata_t {IR_MARK=LOW, IR_SPACE=HIGH}; //IR_MARK is LOW; IR_SPACE is HIGH 
   //read IR receiver incoming pin state (HIGH is a SPACE, LOW is a MARK, since IR receiver is active LOW)
   irdata_t irdata = (irdata_t)digitalRead(irparams.recvpin); 
   
@@ -1282,7 +1346,6 @@ ISR(IR_RECV_INTR_NAME)
   }
   
   //State Machine:
-  enum irdata_t {IR_MARK=LOW, IR_SPACE=HIGH}; //IR_MARK is LOW; IR_SPACE is HIGH 
   switch(irparams.rcvstate) {
   case STATE_START: //Timing the gap (long SPACE) between IR codes, waiting for first MARK to start 
     //we are waiting for the first MARK to occur, as the start of a new transmission, so ignore SPACES
@@ -1315,7 +1378,6 @@ ISR(IR_RECV_INTR_NAME)
         irparams.rcvstate = STATE_START; //prepare for next code 
         
         //Next: don't reset timer--keep counting space width, then do: A) If single-buffered, set irparams.pauseISR to true, OR B) if double-buffered, copy buffer data over
-        /////////////MAKE INTO A FUNCTION TO SEE HOW DATA SIZE CHANGES!//////////////
         if (irparams.doubleBuffered==true)
         {
           //copy buffer from secondary (rawlen2) to primary (rawlen1); the primary buffer will be waiting for the user to decode it, while the secondary buffer will be written in by this ISR as any new data comes in; see buffer notes in IRLibRData.h for much more info.
@@ -1328,7 +1390,6 @@ ISR(IR_RECV_INTR_NAME)
           //no need to copy anything from irparams.rawbuf2 to irparams.rawbuf1, because when single-buffered, irparams.rawbuf2 points to irparams.rawbuf1 anyway, so they are the same buffer
         }
         irparams.rawlen1 = irparams.rawlen2;
-        ////////////////END OF WHERE FUNCTION WOULD BE////////////////
       }
     }
     break;
@@ -1337,7 +1398,6 @@ ISR(IR_RECV_INTR_NAME)
   do_Blink(!(bool)irdata); //blink LED indicator LED during receiving of IR data 
 }
 #endif //end of ifdef USE_IRRECV
-
 
 /*
  * The hardware specific portions of IRsendBase

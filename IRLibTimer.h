@@ -131,13 +131,33 @@
 //#define IR_RECV_TIMER4_HS
 //#define IR_RECV_TIMER5
 
-
+//==========================================================================================
 /* Everything below this point is a computation based on user settings above.
  * In all likelihood you would never need to modify anything below this point
  * unless you are adding some completely new feature or seriously modifying
  * the behavior of existing features. In other words don't try this at home.
  */
-#if !defined(IR_RECV_TIMER_OVERRIDE)
+ //==========================================================================================
+
+#include <avr/interrupt.h>
+//defines for setting and clearing register bits
+#ifndef cbi
+#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
+#endif
+#ifndef sbi
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#endif
+#define CLKFUDGE 5      // fudge factor for clock interrupt overhead
+#ifdef F_CPU
+#define SYSCLOCK F_CPU     // main Arduino clock
+#else
+#define SYSCLOCK 16000000  // main Arduino clock
+#endif
+#define PRESCALE 8      // timer clock prescale
+#define CLKSPERUSEC (SYSCLOCK/PRESCALE/1000000)   // timer clocks per microsecond 
+
+ 
+ #if !defined(IR_RECV_TIMER_OVERRIDE)
 	#if defined(IR_SEND_TIMER1)
 		#define IR_RECV_TIMER1
 	#elif defined(IR_SEND_TIMER2)

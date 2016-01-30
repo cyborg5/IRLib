@@ -28,7 +28,7 @@
 
 #include <IRLib.h>
 
-int RECV_PIN = 11;
+int RECV_PIN = 2;
 
 IRrecv My_Receiver(RECV_PIN);
 
@@ -39,12 +39,16 @@ unsigned int Buffer[RAWBUF]; //NB: you MUST use this external buffer if you want
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
   delay(2000);while(!Serial);//delay for Leonardo
   Serial.println(F("begin"));
   My_Decoder.useDoubleBuffer(Buffer);
   //Try different values here for Mark_Excess. 50us is a good starting guess. See detailed notes above for more info.
   My_Receiver.Mark_Excess=50; //us; mark/space correction factor
+  //Optional: set LED to blink while IR codes are being received 
+  // My_Receiver.blink13(true); //blinks whichever LED is connected to LED_BUILTIN on your board, usually pin 13
+  //                            //-see here for info on LED_BUILTIN: https://www.arduino.cc/en/Reference/Constants
+  My_Receiver.setBlinkLED(13,true); //same as above, except you can change the LED pin number if you like 
   My_Receiver.enableIRIn(); // Start the receiver
 }
 
@@ -52,9 +56,10 @@ void loop() {
   if (My_Receiver.getResults(&My_Decoder)) {
     //Restart the receiver so it can be capturing another code while we are working on decoding this one.
     //NB: you are ONLY allowed to resume before decoding if you are using an external buffer. See note above.
-    My_Receiver.resume(); 
     My_Decoder.decode();
     My_Decoder.dumpResults();
+    My_Receiver.resume();
   }
+  // Serial.println(F("test"));
 }
 

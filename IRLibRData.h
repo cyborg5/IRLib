@@ -40,7 +40,7 @@
  */
 
 // receiver states
-enum rcvstate_t {STATE_UNKNOWN, STATE_IDLE, STATE_MARK, STATE_SPACE, STATE_STOP, STATE_RUNNING};
+enum rcvstate_t {STATE_IDLE, STATE_MARK, STATE_SPACE, STATE_STOP};
 
 // information for the interrupt handlers (ISRs)
 typedef struct {

@@ -67,7 +67,8 @@
 
 #define RAWBUF 100 // Length of raw duration buffer (cannot exceed 255); keep this define inside IRLib.h so the user can access it directly from their Arduino sketch
 
-typedef uint8_t IRTYPES; //formerly was an enum
+//DEPRECATED: USE ENUM INSTEAD; ~GS
+/* typedef uint8_t IR_types_t; //formerly was an enum
 #define UNKNOWN 0
 #define NEC 1
 #define SONY 2
@@ -78,16 +79,31 @@ typedef uint8_t IRTYPES; //formerly was an enum
 #define NECX 7
 //#define ADDITIONAL (number) //make additional protocol 8 and change HASH_CODE to 9
 #define HASH_CODE 8
-#define LAST_PROTOCOL HASH_CODE
+#define LAST_PROTOCOL HASH_CODE */
 
-const __FlashStringHelper *Pnames(IRTYPES Type); //Returns a character string that is name of protocol.
+typedef enum 
+{
+  UNKNOWN = 0,
+  NEC,
+  SONY,
+  RC5,
+  RC6,
+  PANASONIC_OLD,
+  JVC,
+  NECX,
+  //Add additional protocols here; keep HASH_CODE & LAST_PROTOCOL always at the very end 
+  HASH_CODE,
+  LAST_PROTOCOL = HASH_CODE
+} IR_types_t;
+
+const __FlashStringHelper *Pnames(IR_types_t Type); //Returns a character string that is name of protocol.
 
 // Base class for decoding raw results
 class IRdecodeBase
 {
 public:
   IRdecodeBase(void);
-  IRTYPES decode_type;           // NEC, SONY, RC5, UNKNOWN etc.
+  IR_types_t decode_type;           // NEC, SONY, RC5, UNKNOWN etc.
   unsigned long value;           // Decoded value
   unsigned char bits;            // Number of bits in decoded value
   volatile unsigned int *rawbuf; // Raw intervals in microseconds; GS: now ALWAYS points to irparams.rawbuf1; keep this variable, even though redundant with irparams.rawbuf1, for easy public access to the data 
@@ -259,7 +275,7 @@ public virtual IRsendNECx
 // , public virtual IRsendADDITIONAL //add additional protocols here
 {
 public:
-  void send(IRTYPES Type, unsigned long data, unsigned int data2);
+  void send(IR_types_t Type, unsigned long data, unsigned int data2);
 };
 
 // Changed this to a base class so it can be extended

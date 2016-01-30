@@ -51,6 +51,7 @@
 #define PERCENT_TOLERANCE 25  // percent tolerance in measurements
 #define DEFAULT_ABS_TOLERANCE 75 //absolute tolerance in microseconds
 #define MINIMUM_TIME_GAP_PERMITTED 100 //us; minimum Mark or Space period permitted; GS: for use in IRrecvPCI: if a Mark or Space is less than this value I will filter it out, as if it never occurred.
+///////////////#define _GAP 5000
 
 /* 
  * These revised MATCH routines allow you to use either percentage or absolute tolerances.

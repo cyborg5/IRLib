@@ -40,7 +40,7 @@ volatile irparams_t irparams; //MUST be volatile since it is used both inside an
 /*
  * Returns a pointer to a flash stored string that is the name of the protocol received. 
  */
-const __FlashStringHelper *Pnames(IRTYPES Type) {
+const __FlashStringHelper *Pnames(IR_types_t Type) {
   if(Type>LAST_PROTOCOL) Type=UNKNOWN;
   // You can add additional strings before the entry for hash code.
   const __FlashStringHelper *Names[LAST_PROTOCOL+1]={F("Unknown"),F("NEC"),F("Sony"),F("RC5"),F("RC6"),F("Panasonic Old"),F("JVC"),F("NECx"),F("Hash Code")};
@@ -100,14 +100,16 @@ void IRsendBase::sendGeneric(unsigned long data, unsigned char Num_Bits, unsigne
 	else space(Space_One);
 };
 
+//Protocol info: https://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
+//-the base time is 562.5us 
 void IRsendNEC::send(unsigned long data)
 {
   if (data==REPEAT) {
     enableIROut(38);
-    mark (564* 16); space(564*4); mark(564);space(56*173);
+    mark (563* 16); space(563*4); mark(563);space(56*173);
   }
   else {
-    sendGeneric(data,32, 564*16, 564*8, 564, 564, 564*3, 564, 38, true);
+    sendGeneric(data,32, 563*16, 563*8, 563, 563, 563*3, 563, 38, true);
   }
 };
 
@@ -127,7 +129,7 @@ void IRsendSony::send(unsigned long data, int nbits) {
  */
 void IRsendNECx::send(unsigned long data)
 {
-  sendGeneric(data,32, 564*8, 564*8, 564, 564, 564*3, 564, 38, true, 108000);
+  sendGeneric(data,32, 563*8, 563*8, 563, 563, 563*3, 563, 38, true, 108000);
 };
 
 void IRsendPanasonic_Old::send(unsigned long data)
@@ -235,7 +237,7 @@ void IRsendRC6::send(unsigned long data, unsigned char nbits)
  * There is no hash code send possible. You can call sendRaw directly if necessary.
  * Typically "data2" is the number of bits.
  */
-void IRsend::send(IRTYPES Type, unsigned long data, unsigned int data2) {
+void IRsend::send(IR_types_t Type, unsigned long data, unsigned int data2) {
   switch(Type) {
     case NEC:           IRsendNEC::send(data); break;
     case SONY:          IRsendSony::send(data,data2); break;
@@ -446,18 +448,21 @@ bool IRdecode::decode(void) {
   return false;
 }
 
-#define NEC_RPT_SPACE	2250
+#define NEC_RPT_SPACE	2250 //562.5*4
+//Source for info on protocol timing: https://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
+//562.5us is the base time--the time upon which other times are based 
 bool IRdecodeNEC::decode(void) {
   IRLIB_ATTEMPT_MESSAGE(F("NEC"));
   // Check for repeat
   if (rawlen == 4 && MATCH(rawbuf[2], NEC_RPT_SPACE) &&
-    MATCH(rawbuf[3],564)) {
+    MATCH(rawbuf[3],563)) {
     bits = 0;
     value = REPEAT;
     decode_type = NEC;
     return true;
   }
-  if(!decodeGeneric(68, 564*16, 564*8, 0, 564, 564*3, 564)) return false;
+  //                68  ~9000   ~4500  0  563 ~1687.5 563
+  if(!decodeGeneric(68, 563*16, 563*8, 0, 563, 563*3, 563)) return false;
   decode_type = NEC;
   return true;
 }
@@ -467,7 +472,8 @@ bool IRdecodeNEC::decode(void) {
 bool IRdecodeSony::decode(void) {
   IRLIB_ATTEMPT_MESSAGE(F("Sony"));
   if(rawlen!=2*8+2 && rawlen!=2*12+2 && rawlen!=2*15+2 && rawlen!=2*20+2) return RAW_COUNT_ERROR;
-  if(!decodeGeneric(0, 600*4, 600, 600*2, 600, 600,0)) return false;
+  //                0  2400   600  1200   600  600  0
+  if(!decodeGeneric(0, 600*4, 600, 600*2, 600, 600, 0)) return false;
   decode_type = SONY;
   return true;
 }
@@ -496,7 +502,8 @@ bool IRdecodeSony::decode(void) {
  */
 bool IRdecodePanasonic_Old::decode(void) {
   IRLIB_ATTEMPT_MESSAGE(F("Panasonic_Old"));
-  if(!decodeGeneric(48,833*4,833*4,0,833,833*3,833)) return false;
+  //                48  3332   3332   0  833  2499   833 
+  if(!decodeGeneric(48, 833*4, 833*4, 0, 833, 833*3, 833)) return false;
   /*
    * The protocol spec says that the first 11 bits described the device and function.
    * The next 11 bits are the same thing only it is the logical Bitwise complement.
@@ -515,8 +522,9 @@ bool IRdecodePanasonic_Old::decode(void) {
 }
 
 bool IRdecodeNECx::decode(void) {
-  IRLIB_ATTEMPT_MESSAGE(F("NECx"));  
-  if(!decodeGeneric(68,564*8,564*8,0,564,564*3,564)) return false;
+  IRLIB_ATTEMPT_MESSAGE(F("NECx"));
+  //                68  ~4500  ~4500  0  563 ~1687.5 563
+  if(!decodeGeneric(68, 563*8, 563*8, 0, 563, 563*3, 563)) return false;
   decode_type = NECX;
   return true;
 }
@@ -869,7 +877,7 @@ bool checkForEndOfIRCode(bool pinState, unsigned long dt, byte whoIsCalling)
       
       if (irparams.doubleBuffered==true)
       {
-        //copy buffer from primary (rawlen2) to secondary (rawlen) buffer; the secondary buffer will be waiting for the user to decode it, while the primary buffer will be written in by this ISR as any new data comes in 
+        //copy buffer from secondary (rawlen2) to primary (rawlen1); the primary buffer will be waiting for the user to decode it, while the secondary buffer will be written in by this ISR as any new data comes in; see buffer notes in IRLibRData.h for much more info.
         for(unsigned char i=0; i<irparams.rawlen2; i++) 
           irparams.rawbuf1[i] = irparams.rawbuf2[i];
       }
@@ -1219,24 +1227,6 @@ void do_Blink(bool blinkState) {
 #ifdef USE_IRRECV
 //===========================================================================================
 
-//Defines for ISR for IRrecv 
-#include <avr/interrupt.h>
-//defines for setting and clearing register bits
-#ifndef cbi
-#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-#endif
-#ifndef sbi
-#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
-#endif
-#define CLKFUDGE 5      // fudge factor for clock interrupt overhead
-#ifdef F_CPU
-#define SYSCLOCK F_CPU     // main Arduino clock
-#else
-#define SYSCLOCK 16000000  // main Arduino clock
-#endif
-#define PRESCALE 8      // timer clock prescale
-#define CLKSPERUSEC (SYSCLOCK/PRESCALE/1000000)   // timer clocks per microsecond
-
 /*
  * The original IRrecv which uses 50us timer driven interrupts to sample input pin.
  */
@@ -1252,11 +1242,11 @@ void IRrecv::resume() {
 
 void IRrecv::enableIRIn(void) {
   IRrecvBase::enableIRIn();
-  //set up pulse clock timer interrupt
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
   {
+    //set up pulse clock timer interrupt (ex: for every 50us)
     IR_RECV_CONFIG_TICKS();
-    IR_RECV_ENABLE_INTR;
+    IR_RECV_ENABLE_INTR; //enable interrupt 
   }
 }
 
@@ -1268,36 +1258,39 @@ bool IRrecv::getResults(IRdecodeBase *decoder) {
     rcvstate = irparams.rcvstate;
   } 
   if (rcvstate != STATE_STOP) return false;
-  //else:
+  //else (rcvstate==STATE_STOP); a full IR code is in, so process the data!
   IRrecvBase::getResults(decoder,USECPERTICK);
   return true;
 }
 
-#define _GAP 5000 // Minimum map between transmissions
-#define GAP_TICKS (_GAP/USECPERTICK)
-/*
+/*////////////////////NEEDS UPDATING/////////////
  * This interrupt service routine is only used by IRrecv and may or may not be used by other
- * extensions of the IRrecBase. It is timer driven interrupt code to collect raw data.
- * Widths of alternating SPACE, MARK are recorded in rawbuf2. Recorded in ticks of 50 microseconds.
- * rawlen2 counts the number of entries recorded so far. First entry is the SPACE between transmissions.
- * As soon as a SPACE gets long, ready is set, state switches to IDLE, timing of SPACE continues.
+ * extensions of the IRrecvBase. It is timer driven interrupt code to collect raw data.
+ * Widths of alternating SPACE, MARK are recorded in rawbuf2, recorded in ticks of 50 microseconds.
+ * rawlen2 counts the number of entries recorded so far. First entry is the SPACE (IR receiver HIGH time)
+ * between transmissions. As soon as a SPACE gets long, irparams.dataStateChangedToReadyready is set,
+ * state switches to IDLE, timing of SPACE continues.
  * As soon as first MARK arrives, gap width is recorded, ready is cleared, and new logging starts.
  */
+//Defines for ISR:
+#define _GAP 5000 //us; minimum Space (IR receiver HIGH time)  between transmissions
+#define GAP_TICKS (_GAP/USECPERTICK)
 ISR(IR_RECV_INTR_NAME)
 {
-  enum irdata_t {IR_MARK=0, IR_SPACE=1};
+  enum irdata_t {IR_MARK=LOW, IR_SPACE=HIGH}; //IR_MARK is LOW; IR_SPACE is HIGH 
   irdata_t irdata = (irdata_t)digitalRead(irparams.recvpin);
   irparams.timer++; // One more 50us tick
   if (irparams.rawlen2 >= RAWBUF) {
     // Buffer overflow
-    irparams.rcvstate = STATE_STOP;
+    irparams.rcvstate = STATE_STOP; ///////////GS NOTE: TODO: FIX THIS IN THE FUTURE; there is a better way to do it (see IRrecvPCI_Handler)
   }
+  
   switch(irparams.rcvstate) {
   case STATE_IDLE: // In the middle of a gap
     if (irdata == IR_MARK) {
       if (irparams.timer < GAP_TICKS) {
         // Not big enough to be a gap.
-        irparams.timer = 0;
+        irparams.timer = 0; /////////////////
       } 
       else {
         // gap just ended, record duration and start recording transmission
@@ -1320,14 +1313,32 @@ ISR(IR_RECV_INTR_NAME)
       irparams.rawbuf2[irparams.rawlen2++] = irparams.timer;
       irparams.timer = 0;
       irparams.rcvstate = STATE_MARK;
-    } 
-    else { // SPACE
+    }
+    else { //irdata == IR_SPACE
       if (irparams.timer > GAP_TICKS) {
-        // big SPACE, indicates gap between codes
-        // Mark current code as ready for processing
-        // Switch to STOP
-        // Don't reset timer; keep counting space width
-        irparams.rcvstate = STATE_STOP;
+        //Big SPACE, indicates gap between codes, which means an IR code just ended!
+        //data is now ready to be decoded
+        irparams.dataStateChangedToReady = true; 
+        
+        //Next: A) If single-buffered, switch to STATE_STOP; don't reset timer--keep counting space width; OR B) if double-buffered, copy buffer over, reset rawlen2, and switch to STATE_IDLE to prepare to immediately receive more codes 
+        /////////////////MAKE FUNCTION??????///////////////////////
+        if (irparams.doubleBuffered==true)
+        {
+          //copy buffer from secondary (rawlen2) to primary (rawlen1); the primary buffer will be waiting for the user to decode it, while the secondary buffer will be written in by this ISR as any new data comes in; see buffer notes in IRLibRData.h for much more info.
+          for(unsigned char i=0; i<irparams.rawlen2; i++) 
+            irparams.rawbuf1[i] = irparams.rawbuf2[i];
+          irparams.rawlen2 = 0; //reset 
+          irparams.rcvstate = STATE_IDLE;
+        }
+        else //irparams.doubleBuffered==false; for single-buffering:
+        {
+          irparams.rcvstate = STATE_STOP;
+          irparams.pauseISR = true; //since single-buffered only, we must pause the reception of data until decoding the current data is complete
+          //no need to copy anything from irparams.rawbuf2 to irparams.rawbuf1, because when single-buffered, irparams.rawbuf2 points to irparams.rawbuf1 anyway, so they are the same buffer
+        }
+        irparams.rawlen1 = irparams.rawlen2;
+        // irparams.rawlen2 = 0; //reset index; start of a new IR code 
+        ///////////////////////////////////////////////////////////
       } 
     }
     break;
@@ -1336,7 +1347,8 @@ ISR(IR_RECV_INTR_NAME)
       irparams.timer = 0;
     }
     break;
-  }
+  } //end of switch
+  
   do_Blink(!(bool)irdata);
 }
 #endif //end of ifdef USE_IRRECV

@@ -28,7 +28,7 @@
  * Also influenced by http://zovirl.com/2008/11/12/building-a-universal-remote-with-an-arduino/
  */
 
-#ifndef IRLibRData_h
+#ifndef IRLibRData_h //stands for: "IR Library *R*eceiver Data"
 #define IRLibRData_h
 
 /*
@@ -66,15 +66,15 @@ typedef struct {
   -when IRrecvBase::getResults manipulates the buffer, keep in mind that irparams.rawbuf1 is the *same buffer* as decoder->rawbuf, so these two ways to access the buffer are interchangeable 
   */
   
-  unsigned int rawbuf1[RAWBUF]; //raw data (time periods) for Marks (IR receiver output LOW), and Spaces (IR receiver output HIGH)
-  unsigned char rawlen1; //counter of entries in rawbuf1
+  uint16_t rawbuf1[RAWBUF]; //raw data (time periods) for Marks (IR receiver output LOW), and Spaces (IR receiver output HIGH)
+  uint16_t rawlen1; //counter of entries in rawbuf1
   
   //extra variables used by ISR-based receivers, such as IRrecvPCI & IRrecv (for double-buffered data --> no missed incoming signals): 
   bool doubleBuffered; //true if an external buffer has been passed in to IRdecodeBase::useDoubleBuffer, false otherwise 
   bool pauseISR; //set to true to cause the ISR to *not* store new, incoming IR data, until the previous data is decoded; this is necessary only when running single-buffered (ie: when doubleBuffered==false);
   bool interruptIsDetached; //true if the ISR's interrupt handler is detached; ie: the interrupt is no longer occurring at all
-  volatile unsigned int* volatile rawbuf2; //GS added; a volatile pointer to volatile data--an extra buffer; this will become the *secondary* buffer, written do by the IRrecvPCI ISR, for example, while rawbuf1 will remain the *primary* buffer, accessed directly during decoding. This pointer will point to an external buffer that the user must create in their main sketch for use with IRrecvPCI; the user will pass this buffer in via the IRdecodeBase::useDoubleBuffer method. 
-  unsigned char rawlen2; //corresponds to the length of rawbuf2, above; used by IRrecvPCI when double-buffered 
+  volatile uint16_t* volatile rawbuf2; //GS added; a volatile pointer to volatile data--an extra buffer; this will become the *secondary* buffer, written do by the IRrecvPCI ISR, for example, while rawbuf1 will remain the *primary* buffer, accessed directly during decoding. This pointer will point to an external buffer that the user must create in their main sketch for use with IRrecvPCI; the user will pass this buffer in via the IRdecodeBase::useDoubleBuffer method. 
+  uint16_t rawlen2; //corresponds to the length of rawbuf2, above; used by IRrecvPCI when double-buffered 
   bool dataStateChangedToReady; //GS added; IR code buffer *change* state: true if dataStateIsReady (found inside checkForEndOfIRCode()) just made a transition from false to true; false otherwise. This may seem redundant, but it is not. dataStateIsReady indicates the present state, dataStateChangedToReady indicates state transitions. We only want My_Receiver.getResults to return true if the data state *transitioned* from false to true (ie: dataStateChangedToReady==true), so that we only decode a given set of data once. If getResults returned true just because dataStateIsready==true, then if you rapidly called getResults again and again it would keep wasting time decoding and returning the same set of data again and again, rather than decoding and returning each set of data only *once.* 
   
   //for LED blinking 

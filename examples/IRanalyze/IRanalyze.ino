@@ -1,8 +1,8 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
  * Version 1.3   January 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
- * Minor updates by Gabriel Staples -- http://www.ElectricRCAircraftGuy.com -- to make work with library V1.6.0,
- * and to add information on Mark_Excess.
+ * Updates by Gabriel Staples -- http://www.ElectricRCAircraftGuy.com -- to make work with library V1.6.0,
+ * and to add information on Mark_Excess, etc. 
  * Based on original example sketch for IRremote library 
  * Version 0.11 September, 2009
  * Copyright 2009 Ken Shirriff
@@ -13,17 +13,25 @@
  * different key the totals reset and it computes new averages.
  */
  
- /*
- * Notes on Mark_Excess:
- * Try different values here for Mark_Excess. 50us is a good starting guess. Ken Shirriff originally used 100us. 
- * It is assumed that your IR receiver filters the modulated signal such that Marks (LOW periods
- * from the IR receiver) are several dozen microseconds too long and Spaces (HIGH periods from the
- * IR receiver) are the same amount too short. This is the case for most IR receivers.
- * If using the dirt-cheap (<$1 for 10) 1838 IR receivers from Ebay, however, 
- * I recommend setting Mark_Excess to -31us. If using the higher quality TSOP4838 ones, 
- * I recommend setting Mark_Excess to +45us. If Mark_Excess is off by too much, your IR receiver will 
- * appear not to work correctly at all, and will not properly decode IR signals. 
- */
+/*
+Notes on Mark_Excess:
+~By Gabriel Staples, 30 Jan. 2016 
+Try different values here for Mark_Excess. 50us is a good starting guess. Ken Shirriff originally used 100us. 
+It is assumed that your IR receiver filters the modulated signal such that Marks (LOW periods
+from the IR receiver) are several dozen microseconds too long and Spaces (HIGH periods from the
+IR receiver) are the same amount too short. This is the case for most IR receivers. Therefore, 
+IRLib automatically *subtracts* Mark_Excess from Marks and *adds* Mark_Excess to Spaces 
+after receiving the raw IR data, and before decoding it. 
+If using the dirt-cheap (<$1 for 10) 1838 IR receivers from Ebay, however, 
+I recommend setting Mark_Excess to -31us for IRrecv, and -37us for IRrecvPCI. If using the 
+higher quality TSOP4838 ones, I recommend setting Mark_Excess to +45us for IRrecv, and +55us
+for IRrecvPCI. If Mark_Excess is off by too much, your IR receiver will 
+appear not to work correctly at all, and will not properly decode IR signals. To evaluate
+your receiver, run the "IRanalyze.ino" sketch and carefully compare your outputs to what you 
+should be getting for your particular protocol. You can find the timing values for each 
+protocol in the decode functions of this library, ex: "IRdecodeNEC::decode" lists the timing
+values used when decoding the very popular NEC protocol. 
+*/
  
 #include <IRLib.h>
 #include <IRLibRData.h>
@@ -37,9 +45,11 @@ unsigned int Accumulated_Time[RAWBUF];
 unsigned long Mark_Avg, Space_Avg,baam,aaam,baas,aaas;
 
 //TRY THIS PROGRAM WITH VARIOUS RECEIVERS:
-// IRrecv     My_Receiver(RECV_PIN);
-IRrecvLoop My_Receiver(RECV_PIN);
-// IRrecvPCI  My_Receiver(0); //Use interrupt=0. This is pin 2 on Arduino Uno and Mega, pin 3 on Leonardo
+// IRrecv     My_Receiver(RECV_PIN); //50us timer-based interrupt receiver object 
+// IRrecvLoop My_Receiver(RECV_PIN); //timer-free, interrupt-free loop polling-based receiver object 
+IRrecvPCI  My_Receiver(0); //External pin change interrupt receiver object
+                           //Use interrupt=0. This is pin 2 on Arduino Uno and Mega, pin 3 on Leonardo.
+                           //See here for which pin it is on other Arduinos: https://www.arduino.cc/en/Reference/AttachInterrupt
 
 IRdecode My_Decoder;
 IR_types_t Old_Type;
@@ -49,9 +59,9 @@ void setup()
   Serial.begin(9600);
   delay(1000);while(!Serial);
   Serial.println(F("begin"));  
-  My_Receiver.enableIRIn();
   //Try different values here for Mark_Excess. 50us is a good starting guess. See detailed notes above for more info.
-  My_Receiver.Mark_Excess=50; //us; mark/space correction factor
+  My_Receiver.Mark_Excess=45; //us; mark/space correction factor
+  My_Receiver.enableIRIn();
   Samples=0;Old_Value=0; Old_Type=UNKNOWN;
   Serial.println(F("Send a signal repeatedly. We will report averages and statistics."));
 }
@@ -127,7 +137,6 @@ void loop() {
     Serial.print(F("\n\nMark Above/Below="));RATIO(aaam,baam);
     Serial.print(F("\nSpace Above/Below="));RATIO(aaas,baas);
     Serial.println();
-    delay(500);
     My_Receiver.resume();
   };
 }

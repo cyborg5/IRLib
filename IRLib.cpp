@@ -329,7 +329,9 @@ void DumpUnavailable(void) {Serial.println(F("dumpResults unavailable"));}
  */
 void IRdecodeBase::dumpResults(void) {
 #ifdef USE_DUMP
-  int i;unsigned long Extent;int interval;
+  uint16_t i;
+  unsigned long Extent;
+  int interval;
   if(decode_type<=LAST_PROTOCOL){
     Serial.print(F("Decoded ")); Serial.print(Pnames(decode_type));
 	Serial.print(F("(")); Serial.print(decode_type,DEC);
@@ -337,7 +339,7 @@ void IRdecodeBase::dumpResults(void) {
   };
   Serial.print(F(" ("));  Serial.print(bits, DEC); Serial.println(F(" bits)"));
   Serial.print(F("Raw samples(")); Serial.print(rawlen, DEC);
-  Serial.print(F("): Gap:")); Serial.println(rawbuf[0], DEC);
+  Serial.print(F("): Long Space:")); Serial.println(rawbuf[0], DEC);
   Serial.print(F("  Head: m")); Serial.print(rawbuf[1], DEC);
   Serial.print(F("  s")); Serial.println(rawbuf[2], DEC);
   int LowSpace= 32767; int LowMark=  32767;
@@ -582,12 +584,12 @@ bool IRdecodeJVC::decode(void) {
  * t1 is the time interval for a single bit in microseconds.
  * Returns ERROR if the measured time interval is not a multiple of t1.
  */
-IRdecodeRC::RCLevel IRdecodeRC::getRClevel(unsigned char *used, const unsigned int t1) {
+IRdecodeRC::RCLevel IRdecodeRC::getRClevel(uint16_t *used, const unsigned int t1) {
   if (offset >= rawlen) {
     // After end of recorded buffer, assume SPACE.
     return SPACE;
   }
-  unsigned int width = rawbuf[offset];
+  uint16_t width = rawbuf[offset];
   IRdecodeRC::RCLevel val;
   if ((offset) % 2) val=MARK; else val=SPACE;
   
@@ -716,7 +718,7 @@ int IRdecodeHash::compare(unsigned int oldval, unsigned int newval) {
 
 bool IRdecodeHash::decode(void) {
   hash = FNV_BASIS_32;
-  for (int i = 1; i+2 < rawlen; i++) {
+  for (uint16_t i = 1; i+2 < rawlen; i++) {
     hash = (hash * FNV_PRIME_32) ^ compare(rawbuf[i], rawbuf[i+2]);
   }
 //note: does not set decode_type=HASH_CODE nor "value" because you might not want to.
@@ -744,7 +746,7 @@ void IRrecvBase::init(void) {
   irparams.doubleBuffered = false; 
   
   //initialize IRrecvBase variable:
-  Mark_Excess=100;
+  Mark_Excess = MARK_EXCESS_DEFAULT;
 }
 
 unsigned char IRrecvBase::getPinNum(void){
@@ -770,7 +772,7 @@ bool IRrecvBase::getResults(IRdecodeBase *decoder, const unsigned int Time_per_T
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
   {
     decoder->rawlen = irparams.rawlen1;
-    for(unsigned char i=0; i<decoder->rawlen; i++) 
+    for(uint16_t i=0; i<decoder->rawlen; i++) 
     {
       //Note: even indices are marks, odd indices are spaces. Subtract Mark_Exces from marks and add it to spaces.
       //-GS UPDATE Note: 29 Jan 2016: decoder->rawbuf now points to the *same buffer* as irparams.rawbuf1, so they are actually interchangeable. 

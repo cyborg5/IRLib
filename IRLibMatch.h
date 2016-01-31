@@ -46,10 +46,34 @@
  * which will require these macros and definitions. Even if you include it, you probably
  * don't need to be intimately familiar with the internal details.
  */
+ 
+/*
+Notes on Mark_Excess:
+~By Gabriel Staples, 30 Jan. 2016 
+Try different values here for Mark_Excess. 50us is a good starting guess. Ken Shirriff originally used 100us. 
+It is assumed that your IR receiver filters the modulated signal such that Marks (LOW periods
+from the IR receiver) are several dozen microseconds too long and Spaces (HIGH periods from the
+IR receiver) are the same amount too short. This is the case for most IR receivers. Therefore, 
+IRLib automatically *subtracts* Mark_Excess from Marks and *adds* Mark_Excess to Spaces 
+after receiving the raw IR data, and before decoding it. 
+If using the dirt-cheap (<$1 for 10) 1838 IR receivers from Ebay, however, 
+I recommend setting Mark_Excess to -31us for IRrecv, and -37us for IRrecvPCI. If using the 
+higher quality TSOP4838 ones, I recommend setting Mark_Excess to +45us for IRrecv, and +55us
+for IRrecvPCI. If Mark_Excess is off by too much, your IR receiver will 
+appear not to work correctly at all, and will not properly decode IR signals. To evaluate
+your receiver, run the "IRanalyze.ino" sketch and carefully compare your outputs to what you 
+should be getting for your particular protocol. You can find the timing values for each 
+protocol in the decode functions of this library, ex: "IRdecodeNEC::decode" lists the timing
+values used when decoding the very popular NEC protocol. 
+*/
 
-#define USECPERTICK 50  // microseconds per clock interrupt tick
-#define PERCENT_TOLERANCE 25  // percent tolerance in measurements
-#define DEFAULT_ABS_TOLERANCE 75 //absolute tolerance in microseconds
+//============================================================================================
+//IMPORTANT USER-DEFINES
+//============================================================================================
+#define USECPERTICK 50  //us; microseconds per clock interrupt tick
+#define PERCENT_TOLERANCE 25  //%; percent tolerance in measurements
+#define MARK_EXCESS_DEFAULT 50 //us; Mark_Excess; see notes above.
+#define DEFAULT_ABS_TOLERANCE 125 //us; absolute tolerance in microseconds
 #define MINIMUM_TIME_GAP_PERMITTED 150 //us; minimum Mark or Space period permitted; GS: for use in IRrecv & IRrecvPCI: if a Mark or Space is less than this value I will filter it out, as if it never occurred. Note: Looking in the IRremote library, file "ir_Mitsubishi.cpp," I see that MITSUBISHI_HDR_MARK is only 250us, and in "ir_Sharp.cpp," SHARP_BIT_MARK is 245us, so I wouldn't recommend making this value much above 150us. Keep it below 0.75 * the_smallest_mark_or_space_for_any_valid_IR_protocol for sure, or you risk filtering out valid data. 0.75 * 245 = 183.75us. 
 #define LONG_SPACE_US 7800 //us; minimum long Space (IR receiver HIGH time) between IR transmissions; NB: GS note: this value should be >= ~1.25 * the_largest_space_any_valid_IR_protocol_might_have. The largest Space in any valid IR protocol that I can find is 6200us for "DISH_RPT_SPACE" in the Dish protocol (see IRremote library, ir_Dish.cpp). 1.25 * 6200 = 7750us, so 7800us is a good value to choose.
 

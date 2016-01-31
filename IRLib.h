@@ -65,7 +65,7 @@
 #define VIRTUAL
 #endif
 
-#define RAWBUF 100 // Length of raw duration buffer (cannot exceed 255); keep this define inside IRLib.h so the user can access it directly from their Arduino sketch
+#define RAWBUF 100 // Length of raw duration buffer (2-byte value, 0 to 65535); keep this define inside IRLib.h so the user can access it directly from their Arduino sketch
 
 typedef uint8_t IR_types_t; //formerly was an enum
 #define UNKNOWN 0
@@ -108,8 +108,8 @@ public:
   IR_types_t decode_type;           // NEC, SONY, RC5, UNKNOWN etc.
   unsigned long value;           // Decoded value
   unsigned char bits;            // Number of bits in decoded value
-  volatile unsigned int *rawbuf; // Raw intervals in microseconds; GS: now ALWAYS points to irparams.rawbuf1; keep this variable, even though redundant with irparams.rawbuf1, for easy public access to the data 
-  unsigned char rawlen;          // Number of records in rawbuf; keep this variable, even though redundant with irparams.rawlen, for easy public access to the data 
+  volatile uint16_t *rawbuf; // Raw intervals in microseconds; GS: now ALWAYS points to irparams.rawbuf1; keep this variable, even though redundant with irparams.rawbuf1, for easy public access to the data 
+  uint16_t rawlen;          // Number of records in rawbuf; keep this variable, even though redundant with irparams.rawlen, for easy public access to the data 
   bool ignoreHeader;             // Relaxed header detection allows AGC to settle
   virtual void reset(void);      // Initializes the decoder
   virtual bool decode(void);     // This base routine always returns false override with your routine
@@ -119,7 +119,7 @@ public:
   void useDoubleBuffer(volatile uint16_t *p_buffer); //use this to allow double-buffering; see extensive double-buffer notes in IRLibRData.h. 
   // void copyBuf (IRdecodeBase *source);//copies rawbuf and rawlen from one decoder to another; GS: REMOVED, NO LONGER NEEDED; double-buffers are done differently now 
 protected:
-  unsigned char offset;           // Index into rawbuf used various places
+  uint16_t offset;           // Index into rawbuf used various places
 };
 
 class IRdecodeHash: public virtual IRdecodeBase
@@ -149,11 +149,11 @@ class IRdecodeRC: public virtual IRdecodeBase
 public:
   enum RCLevel {MARK, SPACE, ERROR};//used by decoders for RC5/RC6
   // These are called by decode
-  RCLevel getRClevel(unsigned char *used, const unsigned int t1);
+  RCLevel getRClevel(uint16_t *used, const unsigned int t1); //NB: datatype/size of *used must correspond to rawlen 
 protected:
-  unsigned char nbits;
-  unsigned char used;
-  long data;
+  uint8_t nbits;
+  uint16_t used; //NB: datatype/size of *used must correspond to rawlen 
+  long data; //GS: why long instead of unsigned long? todo: find out if this really needs to be a signed value 
 };
 
 class IRdecodeRC5: public virtual IRdecodeRC 
@@ -295,7 +295,7 @@ public:
   virtual void resume(void);
   unsigned char getPinNum(void);
   //variables:
-  int16_t Mark_Excess;
+  int16_t Mark_Excess; //*must* be *signed*!
 protected:
   void init(void);
 };

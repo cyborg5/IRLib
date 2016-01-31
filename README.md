@@ -1,7 +1,7 @@
 **IRLib – an Arduino library for infrared encoding and decoding**  
 **Version 1.6.0, 30 January 2016**  
 Copyright 2013-2015 by Chris Young http://tech.cyborg5.com/irlib/  
--With additions by Gabriel Staples http://www.ElectricRCAircraftGuy.com, 2016  
+-With additions & ISR re-writes by Gabriel Staples http://www.ElectricRCAircraftGuy.com, 2016  
  
 ## MAJOR UPDATES BY GABRIEL STAPLES, January 2016:  
 **-I just put ~50+ hrs into this library to improve it, and beef it up for my own personal needs and use, and to make double-buffered features and external pin-change-interrupt-based IR receives rock-solid and reliable, so I can begin using this library with*out* taking up any timers, when in receive-only mode. I hope to get this whole thing merged back into Chris Young's main fork, so hopefully that works out...**  

@@ -282,8 +282,8 @@
  */
 
 #if defined(IR_RECV_TIMER1)  // defines for timer1 (16 bits)
-	#define IR_RECV_ENABLE_INTR    (TIMSK1 = _BV(OCIE1A))
-	#define IR_RECV_DISABLE_INTR   (TIMSK1 = 0)
+	#define IR_RECV_ENABLE_INTR    (TIMSK1 = _BV(OCIE1A)) 
+	#define IR_RECV_DISABLE_INTR   (TIMSK1 &= ~_BV(OCIE1A)) //clear interrupt enable bit in interrupt mask register 
 	#define IR_RECV_INTR_NAME      TIMER1_COMPA_vect
 	#define IR_RECV_CONFIG_TICKS() ({ \
 		TCCR1A = 0;   TCCR1B = _BV(WGM12) | _BV(CS10); \
@@ -291,7 +291,7 @@
 
 #elif defined(IR_RECV_TIMER2)  // defines for timer2 (8 bits)
 	#define IR_RECV_ENABLE_INTR    (TIMSK2 = _BV(OCIE2A))
-	#define IR_RECV_DISABLE_INTR   (TIMSK2 = 0)
+	#define IR_RECV_DISABLE_INTR   (TIMSK2 &= ~_BV(OCIE2A)) //clear interrupt enable bit in interrupt mask register 
 	#define IR_RECV_INTR_NAME      TIMER2_COMPA_vect
 	#define IR_RECV_COUNT_TOP      (SYSCLOCK * USECPERTICK / 1000000)
 	#if (IR_RECV_COUNT_TOP < 256)
@@ -306,7 +306,7 @@
 
 #elif defined(IR_RECV_TIMER3)  // defines for timer3 (16 bits)
 	#define IR_RECV_ENABLE_INTR    (TIMSK3 = _BV(OCIE3A))
-	#define IR_RECV_DISABLE_INTR   (TIMSK3 = 0)
+	#define IR_RECV_DISABLE_INTR   (TIMSK3 &= ~_BV(OCIE3A)) //clear interrupt enable bit in interrupt mask register 
 	#define IR_RECV_INTR_NAME      TIMER3_COMPA_vect
 	#define IR_RECV_CONFIG_TICKS() ({ \
 		TCCR3A = 0;   TCCR3B = _BV(WGM32) | _BV(CS30); \
@@ -314,7 +314,7 @@
 
 #elif defined(IR_RECV_TIMER4_HS)  // defines for timer4 (10 bits, high speed option)
 	#define IR_RECV_ENABLE_INTR    (TIMSK4 = _BV(TOIE4))
-	#define IR_RECV_DISABLE_INTR   (TIMSK4 = 0)
+	#define IR_RECV_DISABLE_INTR   (TIMSK4 &= ~_BV(TOIE4)) //clear interrupt enable bit in interrupt mask register 
 	#define IR_RECV_INTR_NAME      TIMER4_OVF_vect
 	#define IR_RECV_CONFIG_TICKS() ({ \
 		TCCR4A = 0;   TCCR4B = _BV(CS40); \
@@ -325,7 +325,7 @@
 
 #elif defined(IR_RECV_TIMER4) // defines for timer4 (16 bits)
 	#define IR_RECV_ENABLE_INTR    (TIMSK4 = _BV(OCIE4A))
-	#define IR_RECV_DISABLE_INTR   (TIMSK4 = 0)
+	#define IR_RECV_DISABLE_INTR   (TIMSK4 &= ~_BV(OCIE4A)) //clear interrupt enable bit in interrupt mask register 
 	#define IR_RECV_INTR_NAME      TIMER4_COMPA_vect
 	#define IR_RECV_CONFIG_TICKS() ({ \
 		TCCR4A = 0;   TCCR4B = _BV(WGM42) | _BV(CS40); \
@@ -333,7 +333,7 @@
 
 #elif defined(IR_RECV_TIMER5)  // defines for timer5 (16 bits)
 	#define IR_RECV_ENABLE_INTR    (TIMSK5 = _BV(OCIE5A))
-	#define IR_RECV_DISABLE_INTR   (TIMSK5 = 0)
+	#define IR_RECV_DISABLE_INTR   (TIMSK5 &= ~_BV(OCIE5A)) //clear interrupt enable bit in interrupt mask register 
 	#define IR_RECV_INTR_NAME      TIMER5_COMPA_vect
 	#define IR_RECV_CONFIG_TICKS() ({ \
 		TCCR5A = 0;   TCCR5B = _BV(WGM52) | _BV(CS50); \

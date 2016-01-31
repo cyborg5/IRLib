@@ -872,8 +872,8 @@ bool checkForEndOfIRCode(bool pinState, unsigned long dt, byte whoIsCalling)
   //-if the USER is calling this function, we want the pinState to be HIGH (SPACE_START), and dt to be long, to consider this to be the end of the IR code; if pinState transitions from HIGH to LOW, and dt is long, we will let the ISR catch and handle it, rather than the user's call
   //-if the ISR is calling this function, we want the pinState to be LOW (MARK_START), and dt to be long , to consider this to be the end of the IR code, since the ISR is only called when pin state *transitions* occur 
   //-note: "irparams.rawlen2>1" was added to ensure that there actually is data that has been acquired 
-  if ((whoIsCalling==CALLED_BY_ISR && pinState==MARK_START && dt >= GAP_US && irparams.rawlen2>1) || 
-      (whoIsCalling==CALLED_BY_USER && pinState==HIGH && dt >= GAP_US && irparams.rawlen2>1)) //a long SPACE gap (10ms or more) just occurred; this indicates the end of a complete IR code 
+  if ((whoIsCalling==CALLED_BY_ISR && pinState==MARK_START && dt >= LONG_SPACE_US && irparams.rawlen2>1) || 
+      (whoIsCalling==CALLED_BY_USER && pinState==HIGH && dt >= LONG_SPACE_US && irparams.rawlen2>1)) //a long SPACE gap (10ms or more) just occurred; this indicates the end of a complete IR code 
   {
     dataStateIsReady = true; //the current data state; true since we just detected the end of the IR code 
     
@@ -960,7 +960,7 @@ void IRrecvPCI_Handler()
   }
   checkForEndOfIRCode(pinState,dt,CALLED_BY_ISR);
   
-  //else pinState==MARK_START && (MINIMUM_TIME_GAP_PERMITTED <= dt < GAP_US), OR pinState==SPACE_START && (dt >= MINIMUM_TIME_GAP_PERMITTED)
+  //else pinState==MARK_START && (MINIMUM_TIME_GAP_PERMITTED <= dt < LONG_SPACE_US), OR pinState==SPACE_START && (dt >= MINIMUM_TIME_GAP_PERMITTED)
   //process the data by storing the time gap (dt) Mark or Space value 
   irparams.rawbuf2[irparams.rawlen2] = dt; 
   irparams.rawlen2++;
@@ -1358,39 +1358,37 @@ ISR(IR_RECV_INTR_NAME)
     }
     break;
   case STATE_TIMING_MARK: //timing MARK, waiting for next SPACE to start 
-    if (irdata == IR_SPACE) { //MARK ended, record time
+    if (irdata==IR_SPACE && irparams.timer>=MINIMUM_TIME_GAP_PERMITTED_TICKS) { //MARK ended, record time; filter out really short MARKS by ensuring the MARK is long enough to not just be noise 
       irparams.rawbuf2[irparams.rawlen2++] = irparams.timer;
       irparams.timer = 0;
       irparams.rcvstate = STATE_TIMING_SPACE;
     }
     break;
   case STATE_TIMING_SPACE: //timing SPACE, waiting for next MARK to start, OR for enough time to elapse that we know the entire IR code is complete (marked by a long SPACE)
-    if (irdata == IR_MARK) { //SPACE just ended, record it
+    if (irdata==IR_MARK && irparams.timer>=MINIMUM_TIME_GAP_PERMITTED_TICKS) { //SPACE just ended, record its time; filter out really short SPACES by ensuring the SPACE is long enough to not just be noise 
       irparams.rawbuf2[irparams.rawlen2++] = irparams.timer;
       irparams.timer = 0;
       irparams.rcvstate = STATE_TIMING_MARK;
     }
-    else { //(irdata == IR_SPACE)
-      if (irparams.timer > GAP_TICKS) {
-        //Big SPACE, indicates gap between codes, which means an IR code just ended!
-        //data is now ready to be decoded
-        irparams.dataStateChangedToReady = true;
-        irparams.rcvstate = STATE_START; //prepare for next code 
-        
-        //Next: don't reset timer--keep counting space width, then do: A) If single-buffered, set irparams.pauseISR to true, OR B) if double-buffered, copy buffer data over
-        if (irparams.doubleBuffered==true)
-        {
-          //copy buffer from secondary (rawlen2) to primary (rawlen1); the primary buffer will be waiting for the user to decode it, while the secondary buffer will be written in by this ISR as any new data comes in; see buffer notes in IRLibRData.h for much more info.
-          for(unsigned char i=0; i<irparams.rawlen2; i++) 
-            irparams.rawbuf1[i] = irparams.rawbuf2[i];
-        }
-        else //irparams.doubleBuffered==false; for single-buffering:
-        {
-          irparams.pauseISR = true; //since single-buffered only, we must pause the reception of data until decoding the current data is complete
-          //no need to copy anything from irparams.rawbuf2 to irparams.rawbuf1, because when single-buffered, irparams.rawbuf2 points to irparams.rawbuf1 anyway, so they are the same buffer
-        }
-        irparams.rawlen1 = irparams.rawlen2;
+    else if (irdata==IR_SPACE && irparams.timer>LONG_SPACE_TICKS) {
+      //Big SPACE, indicates gap between codes, which means an IR code just ended!
+      //data is now ready to be decoded
+      irparams.dataStateChangedToReady = true;
+      irparams.rcvstate = STATE_START; //prepare for next code 
+      
+      //Next: don't reset timer--keep counting space width, then do: A) If single-buffered, set irparams.pauseISR to true, OR B) if double-buffered, copy buffer data over
+      if (irparams.doubleBuffered==true)
+      {
+        //copy buffer from secondary (rawlen2) to primary (rawlen1); the primary buffer will be waiting for the user to decode it, while the secondary buffer will be written in by this ISR as any new data comes in; see buffer notes in IRLibRData.h for much more info.
+        for(unsigned char i=0; i<irparams.rawlen2; i++) 
+          irparams.rawbuf1[i] = irparams.rawbuf2[i];
       }
+      else //irparams.doubleBuffered==false; for single-buffering:
+      {
+        irparams.pauseISR = true; //since single-buffered only, we must pause the reception of data until decoding the current data is complete
+        //no need to copy anything from irparams.rawbuf2 to irparams.rawbuf1, because when single-buffered, irparams.rawbuf2 points to irparams.rawbuf1 anyway, so they are the same buffer
+      }
+      irparams.rawlen1 = irparams.rawlen2;
     }
     break;
   } //end of switch

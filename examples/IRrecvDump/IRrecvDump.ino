@@ -1,5 +1,5 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
- * Version 1.60   January 2016
+ * Version 1.6.0   January 2016
  * Copyright 2014 by Chris Young http://cyborg5.com
  * Updated 30 Jan 2016 by by Gabriel Staples -- http://www.ElectricRCAircraftGuy.com 
  * after doing a major rewrite of IRrecvPCI & IRrecv, and their associated Interrupt 

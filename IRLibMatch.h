@@ -50,9 +50,12 @@
 #define USECPERTICK 50  // microseconds per clock interrupt tick
 #define PERCENT_TOLERANCE 25  // percent tolerance in measurements
 #define DEFAULT_ABS_TOLERANCE 75 //absolute tolerance in microseconds
-#define MINIMUM_TIME_GAP_PERMITTED 100 //us; minimum Mark or Space period permitted; GS: for use in IRrecvPCI: if a Mark or Space is less than this value I will filter it out, as if it never occurred.
-#define GAP_US 7800 //us; minimum long Space (IR receiver HIGH time) between IR transmissions; NB: GS note: this value should be >= ~1.25 * the_largest_space_any_valid_IR_protocol_might_have. The largest Space in any valid IR protocol that I can find is 6200us for "DISH_RPT_SPACE" in the Dish protocol (see IRremote library, ir_Dish.cpp). 1.25 * 6200 = 7750us, so 7800us is a good value to choose.
-#define GAP_TICKS (GAP_US/USECPERTICK)
+#define MINIMUM_TIME_GAP_PERMITTED 150 //us; minimum Mark or Space period permitted; GS: for use in IRrecv & IRrecvPCI: if a Mark or Space is less than this value I will filter it out, as if it never occurred. Note: Looking in the IRremote library, file "ir_Mitsubishi.cpp," I see that MITSUBISHI_HDR_MARK is only 250us, and in "ir_Sharp.cpp," SHARP_BIT_MARK is 245us, so I wouldn't recommend making this value much above 150us. Keep it below 0.75 * the_smallest_mark_or_space_for_any_valid_IR_protocol for sure, or you risk filtering out valid data. 0.75 * 245 = 183.75us. 
+#define LONG_SPACE_US 7800 //us; minimum long Space (IR receiver HIGH time) between IR transmissions; NB: GS note: this value should be >= ~1.25 * the_largest_space_any_valid_IR_protocol_might_have. The largest Space in any valid IR protocol that I can find is 6200us for "DISH_RPT_SPACE" in the Dish protocol (see IRremote library, ir_Dish.cpp). 1.25 * 6200 = 7750us, so 7800us is a good value to choose.
+
+//Conversions from microseconds to 50-us-interval clock "ticks"
+#define LONG_SPACE_TICKS (LONG_SPACE_US/USECPERTICK) //converts from units of us to 50us counts, or clock "ticks" 
+#define MINIMUM_TIME_GAP_PERMITTED_TICKS (MINIMUM_TIME_GAP_PERMITTED/USECPERTICK) //converts from units of us to 50us counts, or clock "ticks" 
 
 /* 
  * These revised MATCH routines allow you to use either percentage or absolute tolerances.

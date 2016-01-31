@@ -1,6 +1,8 @@
 /* Example program for from IRLib – an Arduino library for infrared encoding and decoding
  * Version 1.3   January 2014
  * Copyright 2014 by Chris Young http://cyborg5.com
+ * Minor updates by Gabriel Staples -- http://www.ElectricRCAircraftGuy.com -- to make work with library V1.6.0,
+ * and to add information on Mark_Excess.
  * Based on original example sketch for IRremote library 
  * Version 0.11 September, 2009
  * Copyright 2009 Ken Shirriff
@@ -10,37 +12,52 @@
  * analyzing unknown protocols. You have to press the same key repeatedly. If you press a 
  * different key the totals reset and it computes new averages.
  */
+ 
+ /*
+ * Notes on Mark_Excess:
+ * Try different values here for Mark_Excess. 50us is a good starting guess. Ken Shirriff originally used 100us. 
+ * It is assumed that your IR receiver filters the modulated signal such that Marks (LOW periods
+ * from the IR receiver) are several dozen microseconds too long and Spaces (HIGH periods from the
+ * IR receiver) are the same amount too short. This is the case for most IR receivers.
+ * If using the dirt-cheap (<$1 for 10) 1838 IR receivers from Ebay, however, 
+ * I recommend setting Mark_Excess to -31us. If using the higher quality TSOP4838 ones, 
+ * I recommend setting Mark_Excess to +45us. If Mark_Excess is off by too much, your IR receiver will 
+ * appear not to work correctly at all, and will not properly decode IR signals. 
+ */
+ 
 #include <IRLib.h>
 #include <IRLibRData.h>
 
-int RECV_PIN = 11;
+int RECV_PIN = 2;
 
 unsigned int Samples,i, LowSpace, LowMark, HighMark, HighSpace, interval,
             balm,aalm,bahm,aahm,bals,aals,bahs,aahs;
 unsigned char bacm,aacm,bacs,aacs, Mark_Count,Space_Count;
 unsigned int Accumulated_Time[RAWBUF];
 unsigned long Mark_Avg, Space_Avg,baam,aaam,baas,aaas;
-//Try this program with various receivers
-IRrecv     My_Receiver(RECV_PIN);
-//IRrecvLoop My_Receiver(RECV_PIN);
-//Use interrupt=0. This is pin 2 on Arduino Uno and Mega, pin 3 on Leonardo
-//IRrecvPCI  My_Receiver(0);
+
+//TRY THIS PROGRAM WITH VARIOUS RECEIVERS:
+// IRrecv     My_Receiver(RECV_PIN);
+IRrecvLoop My_Receiver(RECV_PIN);
+// IRrecvPCI  My_Receiver(0); //Use interrupt=0. This is pin 2 on Arduino Uno and Mega, pin 3 on Leonardo
 
 IRdecode My_Decoder;
-IRTYPES Old_Type;
+IR_types_t Old_Type;
 unsigned long Old_Value;
 void setup()
 {
   Serial.begin(9600);
   delay(1000);while(!Serial);
+  Serial.println(F("begin"));  
   My_Receiver.enableIRIn();
-//  My_Receiver.Mark_Excess=50;//Try different values here
+  //Try different values here for Mark_Excess. 50us is a good starting guess. See detailed notes above for more info.
+  My_Receiver.Mark_Excess=50; //us; mark/space correction factor
   Samples=0;Old_Value=0; Old_Type=UNKNOWN;
   Serial.println(F("Send a signal repeatedly. We will report averages and statistics."));
 }
 void Tab(void) {Serial.print("\t");};
 void loop() {
-  if (My_Receiver.GetResults(&My_Decoder)) {
+  if (My_Receiver.getResults(&My_Decoder)) {
     My_Decoder.decode();
     if( (My_Decoder.decode_type != Old_Type) || (My_Decoder.value != Old_Value)) {
       Serial.println(F("Resetting counters"));
@@ -56,9 +73,9 @@ void loop() {
     Mark_Avg= Space_Avg= Mark_Count= Space_Count=0;
     for(i=0;i<My_Decoder.rawlen;i++){
       Accumulated_Time[i]+=My_Decoder.rawbuf[i];
-      My_Decoder.rawbuf[i]= Accumulated_Time[i]/Samples;//Put back average so DumpResults can report
+      My_Decoder.rawbuf[i]= Accumulated_Time[i]/Samples;//Put back average so dumpResults can report
     }
-    My_Decoder.DumpResults();
+    My_Decoder.dumpResults();
     //Perform additional analysis
     for(i=3;i<My_Decoder.rawlen;i++){ //Compute low, high and average mark and space
       interval=My_Decoder.rawbuf[i];
@@ -67,7 +84,7 @@ void loop() {
       } else {
         Space_Avg += interval; LowSpace=min(LowSpace, interval);  HighSpace=max (HighSpace, interval);Space_Count++;
       }
-      My_Decoder.rawbuf[i]= Accumulated_Time[i]/Samples;//Put back average so DumpResults can report
+      My_Decoder.rawbuf[i]= Accumulated_Time[i]/Samples;//Put back average so dumpResults can report
     }
     Mark_Avg /= Mark_Count; Space_Avg /= Space_Count;
     //Now compute below average highs and lows and above average highs and lows

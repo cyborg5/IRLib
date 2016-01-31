@@ -445,7 +445,7 @@ bool IRdecodeBase::decodeGeneric(unsigned char Raw_Count, unsigned int Head_Mark
  */
 bool IRdecode::decode(void) {
   /*
-  GS: Important Note: *technically*, when using a double buffer (see IRLibRData.h for buffer info, to know what a double buffer is) this whole section should be protected with atomic access guards, since we are reading the decoder rawbuf, which points to the volatile irparams.rawbuf1, which is modified periodically by the ISR as follows: whenever a complete new IR code comes in, if double-buffered, the ISR automatically copies its data from irparams.rawbuf2 to rawbuf1, so it can be decoded *while IR receiving continues.* *However,* if you read rawbuf during decoding and it is simultaneously updated by the ISR, you could be reading erroneous or corrupted information. However, this is actually fine in this case, since we are only *reading,* NOT writing. The worst that would happen is the corrupted rawbuf would not be recognized as a valid IR code, or it would be recognized as the wrong code. This can happen during normal receiving anyway, as IR codes are easily distorted during open-air transmission, and sunlight creates a lot of noise. The user's main sketch will simply ignore bad IR codes. Problem solved. 
+  GS: Important Note on why I'm NOT USING ATOMIC GUARDS: *technically*, when using a double buffer (see IRLibRData.h for buffer info, to know what a double buffer is) this whole section should be protected with atomic access guards, since we are reading the decoder rawbuf, which points to the volatile irparams.rawbuf1, which is modified periodically by the ISR as follows: whenever a complete new IR code comes in, if double-buffered, the ISR automatically copies its data from irparams.rawbuf2 to rawbuf1, so it can be decoded *while IR receiving continues.* *However,* if you read rawbuf during decoding and it is simultaneously updated by the ISR, you could be reading erroneous or corrupted information. However, this is actually fine in this case, since we are only *reading,* NOT writing. The worst that would happen is the corrupted rawbuf would not be recognized as a valid IR code, or it would be recognized as the wrong code. This can happen during normal receiving anyway, as IR codes are easily distorted during open-air transmission, and sunlight creates a lot of noise. The user's main sketch will simply ignore bad IR codes. Problem solved. 
   -So, WHY NOT PROTECT THIS CODE SEGMENT WITH ATOMIC BLOCK GUARDS? Answer: decoding is waaay too slow! It takes so much time to decode through all of the below code types, that you'd be blocking interrupts for *thousands* or even *tens of thousands* of microseconds, which would totally corrupt any ISR routines and time-stamps anyway! Blocking interrupts for any longer than a few dozen microseconds at most is *bad*! Ex: IRdecodeNEC::decode() alone takes ~2984us. I measured it. If the code being received is one of the lower options, you are looking at it taking up to a couple dozen *milli*seconds. So, just leave the below code alone, and don't protect this particular code. Chances are, in all actuality, that one IR code will be fully decoded long before another IR code arrives anyway, and you will *never* really be at risk of reading rawbuf while rawbuf is being updated by the ISR at the same time. So, I will NOT protect the below code with atomic access guards (ex: via the ATOMIC_BLOCK macro).
   */
   if (IRdecodeNEC::decode()) return true;
@@ -768,17 +768,20 @@ bool IRrecvBase::getResults(IRdecodeBase *decoder, const unsigned int Time_per_T
  * adding it to recorded spaces. The amount of adjustment used to be defined in IRLibMatch.h.
  * It is now user adjustable with the old default of 100
  */
-  //ensure atomic access to volatile variables; irparams is volatile  
+  //ensure atomic access to volatile variables; irparams is volatile
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
   {
     decoder->rawlen = irparams.rawlen1;
-    for(uint16_t i=0; i<decoder->rawlen; i++) 
-    {
-      //Note: even indices are marks, odd indices are spaces. Subtract Mark_Exces from marks and add it to spaces.
-      //-GS UPDATE Note: 29 Jan 2016: decoder->rawbuf now points to the *same buffer* as irparams.rawbuf1, so they are actually interchangeable. 
-      decoder->rawbuf[i]=decoder->rawbuf[i]*Time_per_Tick + ( (i % 2)? -Mark_Excess:Mark_Excess);
-    }
   }
+  
+  //GS Note: I am intentionally choosing *not* to use atomic access guards here below. This is because the effect of not using them is minimal, but using them around the whole "for" loop below can lock out interrupts for up to 200~300+us, which I want to avoid. I could move the atomic access guards to be just on the inside of the "for" loop, so interrupts can run between the "for" loop iterations, but I'm ok with the risk of just not using them at all in this particular instance, as the effect of data corruption here would be minimal anyway. For more information and logic behind this decision, see my note called "Important Note on why I'm NOT USING ATOMIC GUARDS", under the IRdecode::decode(void) function definition above. 
+  for(uint16_t i=0; i<decoder->rawlen; i++) 
+  {
+    //Note: even indices are marks, odd indices are spaces. Subtract Mark_Exces from marks and add it to spaces.
+    //-GS UPDATE Note: 29 Jan 2016: decoder->rawbuf now points to the *same buffer* as irparams.rawbuf1, so they are actually interchangeable. 
+    decoder->rawbuf[i]=decoder->rawbuf[i]*Time_per_Tick + ( (i % 2)? -Mark_Excess:Mark_Excess);
+  }
+
   return true;
 }
 
@@ -874,8 +877,8 @@ bool checkForEndOfIRCode(bool pinState, unsigned long dt, byte whoIsCalling)
   //-if the USER is calling this function, we want the pinState to be HIGH (SPACE_START), and dt to be long, to consider this to be the end of the IR code; if pinState transitions from HIGH to LOW, and dt is long, we will let the ISR catch and handle it, rather than the user's call
   //-if the ISR is calling this function, we want the pinState to be LOW (MARK_START), and dt to be long , to consider this to be the end of the IR code, since the ISR is only called when pin state *transitions* occur 
   //-note: "irparams.rawlen2>1" was added to ensure that there actually is data that has been acquired 
-  if ((whoIsCalling==CALLED_BY_ISR && pinState==MARK_START && dt >= LONG_SPACE_US && irparams.rawlen2>1) || 
-      (whoIsCalling==CALLED_BY_USER && pinState==HIGH && dt >= LONG_SPACE_US && irparams.rawlen2>1)) //a long SPACE gap (10ms or more) just occurred; this indicates the end of a complete IR code 
+  if ((whoIsCalling==CALLED_BY_ISR && pinState==MARK_START && dt>=LONG_SPACE_US && irparams.rawlen2>1) || 
+      (whoIsCalling==CALLED_BY_USER && pinState==HIGH && dt>=LONG_SPACE_US && irparams.rawlen2>1)) //a long SPACE gap (10ms or more) just occurred; this indicates the end of a complete IR code 
   {
     dataStateIsReady = true; //the current data state; true since we just detected the end of the IR code 
     
@@ -1001,11 +1004,14 @@ bool IRrecvPCI::getResults(IRdecodeBase *decoder)
     //-Note: since digitalRead is slow, I'd like to keep it *outside* the ATOMIC_BLOCK, *if possible*. Here, it *is* possible. Let's consider a case where a pin change interrupt occurs after reading the pinState: I read pinState, an interrupt occurs (pinState changes), I enter the ATOMIC_BLOCK, calculdate dt, and pass in the WRONG pinState but the RIGHT dt to the checkForEndOfIRCode function. What will happen?
     //--Answer: the ISR would have already correctly processed the whole thing, and since checkForEndOfIRCode checks pinState *and* dt, so long as one of those is correct, the same IR code data won't be accidentally processed twice. We should be ok. In this scenario, the dt calcs, *and* the checkForEndOfIRCode, however, *MUST* be inside the *same* ATOMIC_BLOCK for everything to work right. That's why I have done that below.
     bool pinState = digitalRead(irparams.recvpin); //already atomic since irparams.recvpin is one byte 
+    // unsigned long t_now = micros(); //us; FOR TESTING 
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
       unsigned long dt = micros() - irparams.timer; //us since last edge; note: irparams.timer contains the last time stamp for a Mark or Space edge 
       newDataJustIn = checkForEndOfIRCode(pinState,dt,CALLED_BY_USER);
     }
+    // unsigned long dt = micros() - t_now; //us; FOR TESTING 
+    // Serial.print("dt = "); Serial.println(dt); //FOR TESTING; double-buffered result: dt = ~8us normally, or ~144us when a 68-sample NEC code comes in and gets copied over from rawbuf2 to rawbuf1 
   }
   //3) if new data is ready, process it 
   if (newDataJustIn==true)
@@ -1073,9 +1079,15 @@ void IRfreqISR(void) {
 void IRfrequency::enableFreqDetect(void){
   attachInterrupt(intrnum,IRfreqISR, FALLING);
   //ensure atomic access to volatile variables 
+  for(i=0; i<256; i++) 
+  {
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) //better to have the ATOMIC_BLOCK *inside* the "for" loop so that interrupts can still occur between loop iterations 
+    {
+      Time_Stamp[i]=0; //Time_Stamp is volatile
+    }
+  }
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
   {
-    for(i=0; i<256; i++) Time_Stamp[i]=0; //Time_Stamp is volatile
     IRfreqCount=0; //volatile variable 
   }
   results=0.0;
@@ -1108,11 +1120,10 @@ void IRfrequency::computeFreq(void){
   for(i=1; i<256; i++) {
     unsigned char interval;
     //ensure atomic access to volatile variables; Time_Stamp is volatile here
-    //UNNECESSARY HERE: Interval is a single byte and is therefore already atomic 
-    // ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-    // {
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
       interval=Time_Stamp[i]-Time_Stamp[i-1];
-    // }
+    }
     if(interval>50 || interval<10) continue;//ignore extraneous results where freq is outside the 20~100kHz range
                                             //Note: 1/50us = 20kHz; 1/10us = 100khz
     sum+=interval;//accumulate usable intervals
@@ -1289,7 +1300,7 @@ bool IRrecv::getResults(IRdecodeBase *decoder)
     newDataJustIn = true;
     irparams.dataStateChangedToReady = false; //reset
     //2) 2nd, process the new data  
-    IRrecvBase::getResults(decoder,USECPERTICK); //mandatory to call whenever a new IR data packet is ready to be decoded; this copies volatile data from the secondary buffer into the decoder, while subtracting Mark_Exces from Marks, and adding it to Spaces, among other things
+    IRrecvBase::getResults(decoder,USEC_PER_TICK); //mandatory to call whenever a new IR data packet is ready to be decoded; this copies volatile data from the secondary buffer into the decoder, while subtracting Mark_Exces from Marks, and adding it to Spaces, among other things
   }
   //3) detach the interrupt if the ISR is paused (the ISR will automatically set the pauseISR flag to true to pause itself whenever a full IR code comes in if it is single-buffered instead of double-buffered)
   if (irparams.pauseISR==true) //note: pauseISR is a single byte and already atomic; no atomic guards needed 
@@ -1360,19 +1371,19 @@ ISR(IR_RECV_INTR_NAME)
     }
     break;
   case STATE_TIMING_MARK: //timing MARK, waiting for next SPACE to start 
-    if (irdata==IR_SPACE && irparams.timer>=MINIMUM_TIME_GAP_PERMITTED_TICKS) { //MARK ended, record time; filter out really short MARKS by ensuring the MARK is long enough to not just be noise 
+    if (irdata==IR_SPACE && irparams.timer>=US_TO_TICKS(MINIMUM_TIME_GAP_PERMITTED)) { //MARK ended, record time; filter out really short MARKS by ensuring the MARK is long enough to not just be noise 
       irparams.rawbuf2[irparams.rawlen2++] = irparams.timer;
       irparams.timer = 0;
       irparams.rcvstate = STATE_TIMING_SPACE;
     }
     break;
   case STATE_TIMING_SPACE: //timing SPACE, waiting for next MARK to start, OR for enough time to elapse that we know the entire IR code is complete (marked by a long SPACE)
-    if (irdata==IR_MARK && irparams.timer>=MINIMUM_TIME_GAP_PERMITTED_TICKS) { //SPACE just ended, record its time; filter out really short SPACES by ensuring the SPACE is long enough to not just be noise 
+    if (irdata==IR_MARK && irparams.timer>=US_TO_TICKS(MINIMUM_TIME_GAP_PERMITTED)) { //SPACE just ended, record its time; filter out really short SPACES by ensuring the SPACE is long enough to not just be noise 
       irparams.rawbuf2[irparams.rawlen2++] = irparams.timer;
       irparams.timer = 0;
       irparams.rcvstate = STATE_TIMING_MARK;
     }
-    else if (irdata==IR_SPACE && irparams.timer>LONG_SPACE_TICKS) {
+    else if (irdata==IR_SPACE && irparams.timer>US_TO_TICKS(LONG_SPACE_US)) {
       //Big SPACE, indicates gap between codes, which means an IR code just ended!
       //data is now ready to be decoded
       irparams.dataStateChangedToReady = true;

@@ -287,13 +287,13 @@
 	#define IR_RECV_INTR_NAME      TIMER1_COMPA_vect
 	#define IR_RECV_CONFIG_TICKS() ({ \
 		TCCR1A = 0;   TCCR1B = _BV(WGM12) | _BV(CS10); \
-		OCR1A = SYSCLOCK * USECPERTICK / 1000000;   TCNT1 = 0; })
+		OCR1A = SYSCLOCK * USEC_PER_TICK / 1000000;   TCNT1 = 0; })
 
 #elif defined(IR_RECV_TIMER2)  // defines for timer2 (8 bits)
 	#define IR_RECV_ENABLE_INTR    (TIMSK2 = _BV(OCIE2A))
 	#define IR_RECV_DISABLE_INTR   (TIMSK2 &= ~_BV(OCIE2A)) //clear interrupt enable bit in interrupt mask register 
 	#define IR_RECV_INTR_NAME      TIMER2_COMPA_vect
-	#define IR_RECV_COUNT_TOP      (SYSCLOCK * USECPERTICK / 1000000)
+	#define IR_RECV_COUNT_TOP      (SYSCLOCK * USEC_PER_TICK / 1000000)
 	#if (IR_RECV_COUNT_TOP < 256)
 		#define IR_RECV_CONFIG_TICKS() ({ \
 			TCCR2A = _BV(WGM21);  TCCR2B = _BV(CS20); \
@@ -310,7 +310,7 @@
 	#define IR_RECV_INTR_NAME      TIMER3_COMPA_vect
 	#define IR_RECV_CONFIG_TICKS() ({ \
 		TCCR3A = 0;   TCCR3B = _BV(WGM32) | _BV(CS30); \
-		OCR3A = SYSCLOCK * USECPERTICK / 1000000;   TCNT3 = 0; })
+		OCR3A = SYSCLOCK * USEC_PER_TICK / 1000000;   TCNT3 = 0; })
 
 #elif defined(IR_RECV_TIMER4_HS)  // defines for timer4 (10 bits, high speed option)
 	#define IR_RECV_ENABLE_INTR    (TIMSK4 = _BV(TOIE4))
@@ -319,8 +319,8 @@
 	#define IR_RECV_CONFIG_TICKS() ({ \
 		TCCR4A = 0;   TCCR4B = _BV(CS40); \
 		TCCR4C = 0;   TCCR4D = 0; TCCR4E = 0; \
-		TC4H = (SYSCLOCK * USECPERTICK / 1000000) >> 8; \
-		OCR4C = (SYSCLOCK * USECPERTICK / 1000000) & 255; \
+		TC4H = (SYSCLOCK * USEC_PER_TICK / 1000000) >> 8; \
+		OCR4C = (SYSCLOCK * USEC_PER_TICK / 1000000) & 255; \
 		TC4H = 0;   TCNT4 = 0; })
 
 #elif defined(IR_RECV_TIMER4) // defines for timer4 (16 bits)
@@ -329,7 +329,7 @@
 	#define IR_RECV_INTR_NAME      TIMER4_COMPA_vect
 	#define IR_RECV_CONFIG_TICKS() ({ \
 		TCCR4A = 0;   TCCR4B = _BV(WGM42) | _BV(CS40); \
-		OCR4A = SYSCLOCK * USECPERTICK / 1000000;   TCNT4 = 0; })
+		OCR4A = SYSCLOCK * USEC_PER_TICK / 1000000;   TCNT4 = 0; })
 
 #elif defined(IR_RECV_TIMER5)  // defines for timer5 (16 bits)
 	#define IR_RECV_ENABLE_INTR    (TIMSK5 = _BV(OCIE5A))
@@ -337,7 +337,7 @@
 	#define IR_RECV_INTR_NAME      TIMER5_COMPA_vect
 	#define IR_RECV_CONFIG_TICKS() ({ \
 		TCCR5A = 0;   TCCR5B = _BV(WGM52) | _BV(CS50); \
-		OCR5A = SYSCLOCK * USECPERTICK / 1000000;   TCNT5 = 0; })
+		OCR5A = SYSCLOCK * USEC_PER_TICK / 1000000;   TCNT5 = 0; })
 #else // unknown timer
 	#error "Internal code configuration error, no known IR_RECV_TIMER# defined\n"
 #endif

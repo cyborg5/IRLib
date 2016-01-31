@@ -295,7 +295,7 @@ public:
   virtual void resume(void);
   unsigned char getPinNum(void);
   //variables:
-  int16_t Mark_Excess; //*must* be *signed*!
+  int16_t Mark_Excess; //us; excess Mark time/lacking Space time, due to IR receiver filtering; *must* be *signed*, to allow negative values! For more info, see extensive "Notes on Mark_Excess" in IRLibMatch.h. 
 protected:
   void init(void);
 };

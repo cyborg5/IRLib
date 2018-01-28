@@ -6,13 +6,13 @@ Copyright 2013-2015 by Chris Young http://tech.cyborg5.com/irlib/
 ## MAJOR UPDATES BY GABRIEL STAPLES, January 2016:  
 **-I just put ~50+ hrs into this library to improve it, and beef it up for my own personal needs and use, and to make double-buffered features and external pin-change-interrupt-based IR receives rock-solid and reliable, so I can begin using this library with*out* taking up any timers, when in receive-only mode. I hope to get this whole thing merged back into Chris Young's main fork, so hopefully that works out...**  
 
-##Version 1.6.0 Updgrade/Change Notes, 30 January 2016:  
+## Version 1.6.0 Updgrade/Change Notes, 30 January 2016:  
   By Gabriel Staples (www.ElectricRCAircraftGuy.com):  
   -IR receiving now works better than ever! -- RECEIVE functions significantly improved!  
   This is a major rewrite of IRrecvPCI and IRrecv, causing them to be double-buffered and able to continually receive data regardless of what the user is doing. Rewrote all ISR routines, for both IRrecv and IRrecvPCI, to make them more robust, and to remove some extraneous/unused code. Added new example to demonstrate IRrecvPCI. Implemented atomic access guards for reading/writing volatile variables outside ISRs, using the ATOMIC_BLOCK(ATOMIC_RESTORESTATE) macro, in order to prevent data corruption when accessing multi-byte volatile variables. Added comments throughout code for additional clarity. Changed input pin from INPUT to INPUT_PULLUP, since many IR receiver datasheets recommend a pullup resistor of >10k~20k on the output line. Made Mark_Excess a 2-byte *signed* value to allow negatives, since some IR receivers (ex: dirt cheap 1838 ones for <$1 for 10 on Ebay) actually need a slightly *negative* Mark_Excess value, since they filter in such a way that *spaces* (output HIGH on the receiver) are slightly longer than marks (output LOW on the receiver), which is opposite the norm. Added in IRrecvBase::setBlinkLED, to be able to arbitrarily set the LED to blink. Also updated the blink code in general, leaving blink13(), however, as an option to use. Added simple filter to remove spurious, short, incoming Marks or Spaces when using IRrecv or IRrecvPCI. (User can modify the filter by changing "MINIMUM_TIME_GAP_PERMITTED" inside IRLibMatch.h). Changed buffer lengths to allow buffers with >255 values (using 2-byte buffer size now instead of 1-byte). Made significant changes and improvements to how buffers are done, allowing the user to single or double-buffer incoming data in a much more robust and reliable way. Removed the need for the user to ever call resume() when using a double buffer. Implemented a detachInterrupt function on the receiver objects utilizing ISRs (namely, IRrecv & IRrecvPCI), so the user can completely disable interrupts and stop receiving incoming IR data if desired. Note: If you do this, you must call resume() afterwards to continue receiving, whether single or double-buffered.  
   -Updated only a few of the examples to work with this new version, namely: IRrecvDump.ino, IRanalyze.ino, IRrecvPCIDump_UseNoTimers.ino. Other examples just need to be updated too; they will need only minor changes to be compatible.  
 
-##Recommendations for future work:  
+## Recommendations for future work:  
 ~By Gabriel Staples, 30 Jan. 2015:  
 * Update all example files to work with this new library. Be sure to remove any delay() calls inside the examples, after receiving IR codes or after decoding or wherever, as they are no longer necessary.  
 * Logically break out code segments into separate files; it is waaay too much to be in one .cpp file, or one main .h file, for instance.  
@@ -55,7 +55,7 @@ http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1210243556
 Also influenced by http://zovirl.com/2008/11/12/building-a-universal-remote-with-an-arduino/  
 
 ****************************************************  
-###The package contains:  
+### The package contains:  
 * **IRLib.cpp**	Code for the library written in object C++  
 * **IRLib.h**		Header file which you will include in your sketch  
 * **IRLibMatch.h**	Match macros used internally. Need not include this unless you implement  
@@ -71,7 +71,7 @@ Also influenced by http://zovirl.com/2008/11/12/building-a-universal-remote-with
 Note: there is no "IRremoteInt.h" header as in the original library. Those values were 
 	moved elsewhere.  
 
-##The examples directory contains:  
+## The examples directory contains:  
 * **IRanalyze**		Dumps detailed information about a recent signal. Useful for analyzing  
 		unknown protocols  
 * **IRfreq**		Reports modulation frequency of IR signal. Requires TSMP58000 IR learner  
@@ -97,14 +97,14 @@ Note: there is no "IRremoteInt.h" header as in the original library. Those value
 
 Note: I did not port any of the other demo sketches although I may add IRTest later.  
 
-##The manuals directory contains:  
+## The manuals directory contains:  
 * **IRLibReference.docx**	Reference manual in Microsoft Word format    
 * **IRLibReference.pdf**	Reference manual in Adobe PDF format  
 Online version of this manual is also available at:  
 	http://tech.cyborg5.com/irlib/docs/  
 
 ****************************************************  
-###The library handles the following protocols:  
+### The library handles the following protocols:  
 * NEC, Sony, RC5, RC6, Raw all of which were supported in the KS version.  
 * Additionally added Panasonic_Old, JVC, NECx.  
 * Also added KS hash code routines which he released separately.  

@@ -1,4 +1,4 @@
-#IRLib – an Arduino library for infrared encoding and decoding
+# IRLib – an Arduino library for infrared encoding and decoding
  
 Version 1.51 March 2015 
 Copyright 2013-2015 by Chris Young http://tech.cyborg5.com/irlib/

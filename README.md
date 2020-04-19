@@ -4,7 +4,7 @@ Version 1.51 March 2015
 Copyright 2013-2015 by Chris Young http://tech.cyborg5.com/irlib/
 
 ## NOTICE: This library is no longer being maintained. It has been superseded by IRLib2 which is a major restructuring of the code with many new features. Unfortunately we were not able to maintain backwards compatibility with this library. It should however be relatively easy to update sketches to the new code. We will leave this repository available for those who do not wish to update their code. Please do not submit pull requests or raise issues with this repository. All such issues should be handled with IRLib2 which is available at
-[IRLib1 on GitHub](https://github.com/cyborg5/IRLib2)
+[IRLib2 on GitHub](https://github.com/cyborg5/IRLib2)
 
 This library is a major rewrite of IRemote by Ken Shirriff which was covered 
 by GNU LESSER GENERAL PUBLIC LICENSE which as I read it allows me to make 
